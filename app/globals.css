@@ -1,26 +1,779 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   IPO GMP Desk design system.
+   Same family as the portfolio: Tailwind v4 tokens on `data-theme`, Inter +
+   JetBrains Mono, one ease curve, restrained accent. Differences are deliberate:
+   the accent stays indigo in both themes (portfolio's dark green would collide
+   with the gain/loss semantics used for GMP), and gain/loss have their own tokens.
+   Theme: `data-theme` on <html> wins; otherwise the OS preference applies.
+   --------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f7f7f5;
+  --fg: #16161a;
+  --fg-muted: #52525b;
+  --fg-faint: #6a6a73;
+
+  --surface: rgb(255 255 255 / 0.62);
+  --surface-strong: rgb(255 255 255 / 0.86);
+  --surface-hover: rgb(255 255 255 / 0.85);
+  --border: rgb(24 24 27 / 0.09);
+  --border-strong: rgb(24 24 27 / 0.18);
+  --glass-highlight: rgb(255 255 255 / 0.7);
+
+  --accent: #4f46e5;
+  --accent-2: #8b5cf6;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(79 70 229 / 0.1);
+
+  --gain: #05694a;
+  --gain-soft: rgb(5 105 74 / 0.1);
+  --loss: #be123c;
+  --loss-soft: rgb(190 18 60 / 0.1);
+  --warn: #b45309;
+  --warn-soft: rgb(180 83 9 / 0.1);
+  --info: #0369a1;
+  --info-soft: rgb(3 105 161 / 0.1);
+
+  --shadow-color: 230 25% 12%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 4px 14px -6px hsl(var(--shadow-color) / 0.1);
+  --shadow-md: 0 2px 4px hsl(var(--shadow-color) / 0.05), 0 14px 32px -14px hsl(var(--shadow-color) / 0.22);
+  --shadow-lg: 0 4px 8px hsl(var(--shadow-color) / 0.06), 0 28px 56px -22px hsl(var(--shadow-color) / 0.32);
+
+  --blob-1: rgb(99 102 241 / 0.16);
+  --blob-2: rgb(139 92 246 / 0.12);
+  --grid-line: rgb(24 24 27 / 0.045);
+
+  --page-max: 1840px;
+  --blur: 16px;      /* glass surfaces */
+  --blur-sm: 8px;    /* small glass: pills, liquid indicators */
+  --radius-sm: 8px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+
+  /* Motion tokens (mirrored in components/motion/tokens.ts). Four curves, five durations. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* default: entrances, hovers, reveals */
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);    /* symmetric / looping */
+  --ease-draw: cubic-bezier(0.45, 0.05, 0.2, 1);    /* strokes being drawn */
+  --ease-cinematic: cubic-bezier(0.7, 0, 0.2, 1);   /* large reveals */
+  --dur-micro: 0.15s;        /* colour, opacity, press */
+  --dur-interactive: 0.2s;   /* hover / focus responses */
+  --dur-transition: 0.3s;    /* movement, page enter */
+  --dur-reveal: 0.5s;        /* entrances, chart pieces */
+  --dur-cinematic: 1.2s;     /* data lines, opening animation */
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Dark values, shared by the explicit toggle and the OS preference. */
+:root[data-theme="dark"] {
+  --bg: #08090b;
+  --fg: #ededf0;
+  --fg-muted: #a1a5ad;
+  --fg-faint: #878c96;
+
+  --surface: rgb(255 255 255 / 0.045);
+  --surface-strong: rgb(24 25 29 / 0.88);
+  --surface-hover: rgb(255 255 255 / 0.075);
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.2);
+  --glass-highlight: rgb(255 255 255 / 0.07);
+
+  --accent: #8b8cf8;
+  --accent-2: #a78bfa;
+  --accent-fg: #0b0b14;
+  --accent-soft: rgb(139 140 248 / 0.14);
+
+  --gain: #34d399;
+  --gain-soft: rgb(52 211 153 / 0.12);
+  --loss: #fb7185;
+  --loss-soft: rgb(251 113 133 / 0.12);
+  --warn: #fbbf24;
+  --warn-soft: rgb(251 191 36 / 0.12);
+  --info: #38bdf8;
+  --info-soft: rgb(56 189 248 / 0.12);
+
+  --shadow-color: 235 50% 1%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.5), 0 4px 14px -6px hsl(var(--shadow-color) / 0.5);
+  --shadow-md: 0 2px 4px hsl(var(--shadow-color) / 0.5), 0 14px 32px -14px hsl(var(--shadow-color) / 0.8);
+  --shadow-lg: 0 4px 8px hsl(var(--shadow-color) / 0.5), 0 28px 56px -22px hsl(var(--shadow-color) / 0.9);
+
+  --blob-1: rgb(99 102 241 / 0.2);
+  --blob-2: rgb(139 92 246 / 0.14);
+  --grid-line: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --bg: #08090b;
+    --fg: #ededf0;
+    --fg-muted: #a1a5ad;
+    --fg-faint: #878c96;
+    --surface: rgb(255 255 255 / 0.045);
+    --surface-strong: rgb(24 25 29 / 0.88);
+    --surface-hover: rgb(255 255 255 / 0.075);
+    --border: rgb(255 255 255 / 0.09);
+    --border-strong: rgb(255 255 255 / 0.2);
+    --glass-highlight: rgb(255 255 255 / 0.07);
+    --accent: #8b8cf8;
+    --accent-2: #a78bfa;
+    --accent-fg: #0b0b14;
+    --accent-soft: rgb(139 140 248 / 0.14);
+    --gain: #34d399;
+    --gain-soft: rgb(52 211 153 / 0.12);
+    --loss: #fb7185;
+    --loss-soft: rgb(251 113 133 / 0.12);
+    --warn: #fbbf24;
+    --warn-soft: rgb(251 191 36 / 0.12);
+    --info: #38bdf8;
+    --info-soft: rgb(56 189 248 / 0.12);
+    --shadow-color: 235 50% 1%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.5), 0 4px 14px -6px hsl(var(--shadow-color) / 0.5);
+    --shadow-md: 0 2px 4px hsl(var(--shadow-color) / 0.5), 0 14px 32px -14px hsl(var(--shadow-color) / 0.8);
+    --shadow-lg: 0 4px 8px hsl(var(--shadow-color) / 0.5), 0 28px 56px -22px hsl(var(--shadow-color) / 0.9);
+    --blob-1: rgb(99 102 241 / 0.2);
+    --blob-2: rgb(139 92 246 / 0.14);
+    --grid-line: rgb(255 255 255 / 0.04);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-faint);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-gain: var(--gain);
+  --color-gain-soft: var(--gain-soft);
+  --color-loss: var(--loss);
+  --color-loss-soft: var(--loss-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-card: var(--radius-card);
+  --radius-panel: var(--radius-panel);
+  --shadow-glass: var(--shadow-md);
 }
+
+/* Border default from the base layer so explicit `border-*` utilities still win. */
+@layer base {
+  * { border-color: var(--border); }
+}
+
+html { scroll-behavior: smooth; scroll-padding-block: 6rem; /* a focused field / anchor never lands under the fixed navbar or the on-screen keyboard edge */ }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection { background: var(--accent); color: var(--accent-fg); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* A mouse or touch click must not draw the browser's default (black) focus ring on anything, e.g. the focusable chart or a
+   <summary>. Keyboard focus still gets the accent ring above. */
+:focus:not(:focus-visible) { outline: none; }
+/* No grey flash when tapping links/buttons on touch devices, and the chart is not text you can drag-select. */
+html { -webkit-tap-highlight-color: transparent; }
+svg[role="img"] { user-select: none; -webkit-user-select: none; }
+button, summary, [role="radio"], [role="option"], [role="combobox"] { -webkit-tap-highlight-color: transparent; }
+:where(input, select):focus-visible { outline: none; }
+
+/* ---------------------------------------------------------------------------
+   Ambient background: two soft light blobs and a faint grid, fixed behind
+   everything. Static: depth, not motion.
+   --------------------------------------------------------------------------- */
+/* Depth levels: 0 background (.ambient) · 1 glass sections (.glass, shadow-sm / panel shadow-md) · 2 interactive cards (.interactive:
+   lift + local spotlight) · 3 the active element (press, focus ring, open menus use --shadow-lg). Not every surface gets the same glass. */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Atmosphere: two soft blobs on a layer slightly larger than the screen. One transform animation (composited, no repaint) over 24 s,
+   plus a few px of scroll parallax via the separate `translate` property (decorative layer only, never content). */
+.ambient::before {
+  content: "";
+  position: absolute;
+  inset: -6%;
+  background:
+    radial-gradient(48rem 32rem at 12% 2%, var(--blob-1), transparent 70%),
+    radial-gradient(40rem 28rem at 92% 8%, var(--blob-2), transparent 70%);
+  animation: ambient-drift 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes ambient-drift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.06); }
+}
+@supports (animation-timeline: scroll()) {
+  .ambient::before {
+    animation: ambient-drift 24s ease-in-out infinite alternate, ambient-parallax linear both;
+    animation-timeline: auto, scroll(root);
+  }
+  @keyframes ambient-parallax { from { translate: 0 0; } to { translate: 0 -48px; } }
+}
+/* Touch / low-power / reduced motion: the same atmosphere, perfectly still. */
+@media (prefers-reduced-motion: reduce), (hover: none) and (pointer: coarse) {
+  .ambient::before { animation: none; will-change: auto; }
+}
+.ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 20%, transparent 75%);
+}
+
+/* ---------------------------------------------------------------------------
+   Typography. One scale, financial numbers get tabular figures.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .t-display { font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1.04; font-weight: 700; letter-spacing: -0.035em; text-wrap: balance; }
+  .t-h1 { font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.1; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+  .t-h2 { font-size: clamp(1.35rem, 2vw, 1.75rem); line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; }
+  .t-h3 { font-size: 1.0625rem; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+  .t-body { font-size: 1rem; line-height: 1.7; color: var(--fg-muted); }
+  .t-small { font-size: 0.875rem; line-height: 1.5; }
+  .t-caption { font-size: 0.6875rem; line-height: 1.3; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-faint); }
+  .t-metric { font-weight: 650; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11"; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11"; }
+
+  /* Glass primitives: GlassSurface / GlassCard / GlassPanel share this recipe. */
+  .glass {
+    position: relative;
+    background: var(--surface);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.5);
+    backdrop-filter: blur(var(--blur)) saturate(1.5);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm), inset 0 1px 0 var(--glass-highlight);
+  }
+  /* Navbar: at the top it is a lighter, more transparent glass; scrolled, blur and border firm up so content passes cleanly behind it. */
+  .nav-glass {
+    background: color-mix(in oklab, var(--surface) 62%, transparent);
+    -webkit-backdrop-filter: blur(10px) saturate(1.3);
+    backdrop-filter: blur(10px) saturate(1.3);
+    border-color: color-mix(in oklab, var(--border) 55%, transparent);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+    transition: background-color var(--dur-transition) var(--ease-out), border-color var(--dur-transition) var(--ease-out), box-shadow var(--dur-transition) var(--ease-out), backdrop-filter var(--dur-transition) var(--ease-out);
+  }
+  .nav-glass[data-scrolled="true"] {
+    background: color-mix(in oklab, var(--surface-strong) 72%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    backdrop-filter: blur(22px) saturate(1.6);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-highlight);
+  }
+  .glass-card { border-radius: var(--radius-card); }
+  .glass-panel { border-radius: var(--radius-panel); box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-highlight); }
+
+  /* Interactive card: slight lift, tilt, a firmer border and a LOCALISED cursor spotlight. The card's own surface does not
+     change on hover (no background/opacity/brightness shift, no full-card overlay): the spotlight is a 220px soft circle at
+     the pointer. --mx/--my/--rx/--ry are written by <GlowCard> straight onto the element (no re-render).
+     Hover effects only exist where there is real hover (`hover: hover`), so touch devices get no sticky hover, only the press. */
+  .interactive {
+    transition: transform var(--dur-transition) var(--ease-out), border-color var(--dur-transition) var(--ease-out), box-shadow var(--dur-transition) var(--ease-out);
+    will-change: transform;
+  }
+  .interactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-transition) var(--ease-out);
+    background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%);
+  }
+  @media (hover: hover) {
+    .interactive:hover {
+      transform: perspective(1000px) translateY(-3px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-highlight);
+    }
+    .interactive:hover::before { opacity: 1; }
+  }
+  /* Press feedback: immediate, concurrent with navigation (never waits for it). */
+  .interactive:active { transform: perspective(1000px) scale(0.988); transition-duration: 0.08s; /* press: near-instant */ }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border-radius: 999px; padding: 0.6rem 1.1rem; font-size: 0.875rem; font-weight: 550; line-height: 1;
+    cursor: pointer; user-select: none; white-space: nowrap;
+    transition: background-color var(--dur-interactive), border-color var(--dur-interactive), box-shadow var(--dur-transition) var(--ease-out), transform var(--dur-micro) var(--ease-out), color var(--dur-interactive);
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary {
+    color: var(--accent-fg);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 22px -10px color-mix(in oklab, var(--accent) 70%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.25);
+  }
+  .btn-primary:hover { box-shadow: 0 12px 28px -10px color-mix(in oklab, var(--accent) 80%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.3); filter: brightness(1.06); }
+  .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--fg); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); }
+  .btn-ghost:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+
+  /* Inline link: underline grows from the left. */
+  .link { background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size var(--dur-transition) var(--ease-out), color var(--dur-interactive); }
+  .link:hover { background-size: 100% 1px; color: var(--accent); }
+
+}
+
+/* ---------------------------------------------------------------------------
+   Motion. CSS-driven so it runs before hydration and never hides content from
+   crawlers or no-JS clients. framer-motion is used only where physics matters
+   (navbar indicator, mobile menu, magnetic buttons, chart).
+   --------------------------------------------------------------------------- */
+/* `translate`, not `transform`: a fill-forwards animation would otherwise override hover transforms on the element. */
+@keyframes enter {
+  from { opacity: 0; translate: 0 18px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes kid-in {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes jiggle {
+  0% { rotate: 0deg; } 25% { rotate: -6deg; } 55% { rotate: 5deg; } 80% { rotate: -2deg; } 100% { rotate: 0deg; }
+}
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  80%, 100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Route change: app/template.tsx remounts this wrapper on every navigation. */
+.page-enter { animation: page-in var(--dur-transition) var(--ease-out) both; }
+
+/* Staggered entrance: set `--i` per element (index). Used on blocks, never on text nodes. */
+.enter { animation: enter var(--dur-reveal) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+/* Contents of a card settle just after the card itself (name, then GMP, then facts). */
+.kid { animation: kid-in var(--dur-reveal) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms + var(--c, 0) * 70ms + 140ms); }
+
+/* Below-the-fold reveal on scroll where the browser supports it; plain visible content elsewhere. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: enter linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+.bar-grow { transform-origin: left; animation: bar-grow var(--dur-reveal) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms + var(--c, 0) * 110ms + 150ms); }
+.draw-line { stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw var(--dur-cinematic) var(--ease-out) both; }
+
+/* Skeletons shaped like the real content. */
+.skeleton { position: relative; overflow: hidden; background: color-mix(in oklab, var(--fg) 7%, transparent); border-radius: var(--radius-sm); }
+.skeleton::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--fg) 9%, transparent), transparent);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Live indicator dot. */
+.live-dot { position: relative; display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; animation: pulse-ring 1.8s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .interactive:hover { transform: none; }
+  .skeleton::after, .live-dot::after { display: none; }
+}
+
+/* Cheap blur on small screens where backdrop-filter is costly. */
+@media (max-width: 640px) {
+  :root { --blur: 10px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Theme reveal (components/nav/themeReveal.ts): the clip-path circle itself is animated in JS;
+   this only disables the UA's own cross-fade and fixes layer order + the starting clip, so the
+   destination layer never flashes fully visible before the circle grows.
+   --------------------------------------------------------------------------- */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+::view-transition-group(root) { animation: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html[data-theme-transition="to-dark"]::view-transition-old(root) { z-index: 1; }
+html[data-theme-transition="to-dark"]::view-transition-new(root) { z-index: 2; clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
+html[data-theme-transition="to-light"]::view-transition-old(root) { z-index: 2; clip-path: circle(150vmax at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
+html[data-theme-transition="to-light"]::view-transition-new(root) { z-index: 1; }
+
+/* ---------------------------------------------------------------------------
+   Scrollbars are hidden everywhere (scrolling stays native). Affordance: <ScrollDownHint> for the page and
+   <ScrollArea> for inner scrollers (components/ScrollHints.tsx): round arrow chip with an orbiting accent arc
+   and a glow that trails it. Same recipe as the portfolio's ScrollDownHint (.cp-attn there).
+   --------------------------------------------------------------------------- */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
+@property --attn-a { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --attn-k { syntax: "<number>"; inherits: true; initial-value: 0.6; }
+.attn {
+  /* positioning comes from the fixed/absolute utility on the element; ::before needs it to be positioned */
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  /* Glow offset points at the arc's tail, so it trails behind the bright head instead of leading it. */
+  box-shadow:
+    calc(sin(var(--attn-a) - 95deg) * 8px * var(--attn-k)) calc(cos(var(--attn-a) - 95deg) * -8px * var(--attn-k))
+      calc(10px + 8px * var(--attn-k)) -1px color-mix(in srgb, var(--accent) calc(var(--attn-k) * 55%), transparent);
+  animation: attn-orbit 2.8s linear infinite, attn-breathe 3.2s ease-in-out infinite;
+}
+.attn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: conic-gradient(from var(--attn-a), transparent 0 72%, var(--accent) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.attn:hover { border-color: var(--accent); }
+.attn:active { scale: 0.92; }
+@keyframes attn-orbit { to { --attn-a: 360deg; } }
+@keyframes attn-breathe { 0%, 100% { --attn-k: 0.6; } 50% { --attn-k: 1; } }
+
+/* Arrow: a short double tap in its direction every few seconds. */
+.nudge-down { animation: nudge-down 3.2s ease-in-out infinite; }
+.nudge-right { animation: nudge-right 3.2s ease-in-out infinite; }
+@keyframes nudge-down { 0%, 55%, 100% { translate: 0 0; } 65% { translate: 0 5px; } 75% { translate: 0 0; } 85% { translate: 0 4px; } 92% { translate: 0 0; } }
+@keyframes nudge-right { 0%, 55%, 100% { translate: 0 0; } 65% { translate: 5px 0; } 75% { translate: 0 0; } 85% { translate: 4px 0; } 92% { translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .attn { animation: none !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .attn::before { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .nudge-down, .nudge-right { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   Layout + interaction vocabulary.
+   Levels: 1 subtle (links, rows: colour/underline) · 2 tactile (cards, tabs: .interactive lift + border + glow + tilt)
+   · 3 magnetic (<Magnetic> on primary buttons/nav, + .btn press). Small things jiggle or nudge; nothing loops.
+   Reusable pieces: <Magnetic>, <GlowCard> (HoverLift + HoverTilt + GlowFollow), .enter/.kid/.reveal (Reveal/Stagger),
+   .btn:active (PressScale), .ico-* (IconNudge), .jiggle.
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Gutters grow to clear the notch / rounded corners in landscape (viewport-fit=cover); they are exactly the old values elsewhere. */
+  .page { --gutter: 1.25rem; width: 100%; max-width: var(--page-max); margin-inline: auto; padding-left: max(var(--gutter), env(safe-area-inset-left)); padding-right: max(var(--gutter), env(safe-area-inset-right)); }
+  @media (min-width: 640px) { .page { --gutter: 2rem; } }
+  @media (min-width: 1024px) { .page { --gutter: 3rem; } }
+  @media (min-width: 1536px) { .page { --gutter: 4rem; } }
+
+  /* Icon nudges: trigger on the icon's own hover, or on any ancestor with .group. */
+  .ico { display: inline-block; transition: translate var(--dur-transition) var(--ease-out), rotate var(--dur-transition) var(--ease-out), scale var(--dur-transition) var(--ease-out); }
+  .ico-right:hover, .group:hover .ico-right, .btn:hover .ico-right { translate: 4px 0; }
+  .ico-down:hover, .group:hover .ico-down, .btn:hover .ico-down { translate: 0 3px; }
+  .ico-spin:hover, .group:hover .ico-spin, .btn:hover .ico-spin { rotate: 90deg; }
+  .ico-pop:hover, .group:hover .ico-pop, .btn:hover .ico-pop { scale: 1.18; }
+  .jiggle:hover, .group:hover .jiggle { animation: jiggle var(--dur-transition) var(--ease-in-out); }
+}
+
+/* Smooth open/close for <details> where the browser can interpolate to `auto` (progressive). */
+:root { interpolate-size: allow-keywords; }
+details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size var(--dur-transition) var(--ease-out), content-visibility var(--dur-transition) allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jiggle:hover, .group:hover .jiggle { animation: none; }
+  .ico { transition: none; }
+}
+
+/* Direction cues for premium / discount: the arrow settles once on entry and again on hover. Never loops. */
+@keyframes trend-up { 0% { translate: 0 5px; opacity: 0.3; } 60% { translate: 0 -3px; opacity: 1; } 100% { translate: 0 0; } }
+@keyframes trend-up-b { 0% { translate: 0 5px; opacity: 0.3; } 60% { translate: 0 -3px; opacity: 1; } 100% { translate: 0 0; } }
+@keyframes trend-down { 0% { translate: 0 -5px; opacity: 0.3; } 60% { translate: 0 3px; opacity: 1; } 100% { translate: 0 0; } }
+@keyframes trend-down-b { 0% { translate: 0 -5px; opacity: 0.3; } 60% { translate: 0 3px; opacity: 1; } 100% { translate: 0 0; } }
+.trend-up svg { animation: trend-up var(--dur-reveal) var(--ease-out) 0.5s both; }
+.trend-down svg { animation: trend-down var(--dur-reveal) var(--ease-out) 0.5s both; }
+.group:hover .trend-up svg, .trend-up:hover svg { animation: trend-up-b var(--dur-reveal) var(--ease-out) both; }
+.group:hover .trend-down svg, .trend-down:hover svg { animation: trend-down-b var(--dur-reveal) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .trend-up svg, .trend-down svg { animation: none !important; } }
+
+/* Typewriter caret: zero net width so it never shifts layout. Solid while typing; while idle it breathes (shrinks and expands) smoothly. */
+.tw-caret { display: inline-block; width: 0; height: 0.85em; margin-left: 0.04em; vertical-align: -0.08em; border-right: 0.055em solid var(--fg); border-radius: 1px; transform-origin: center; }
+.tw-caret--idle { animation: caret-breathe 1.3s ease-in-out infinite; }
+@keyframes caret-breathe { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(0.3); opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .tw-caret { display: none; } }
+/* A newly typed letter eases in (opacity only: a transform here would drop it out of the heading's gradient text clip). */
+.tw-in { animation: tw-in var(--dur-transition) var(--ease-out) both; }
+@keyframes tw-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tw-in { animation: none; } }
+
+/* ---------------------------------------------------------------------------
+   Selection pill (navbar, board filters): a plain translucent fill with a light blur. Deliberately matte: no highlights,
+   sheen, glow or accent colour. The stretch-and-settle motion lives in components/motion/Liquid.tsx.
+   --------------------------------------------------------------------------- */
+.liquid {
+  position: absolute;
+  transform-origin: center;
+  background: rgb(255 255 255 / 0.55);
+  border: 1px solid rgb(24 24 27 / 0.06);
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  backdrop-filter: blur(var(--blur-sm));
+  box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.06);
+}
+[data-theme="dark"] .liquid {
+  background: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: none;
+}
+
+/* Hover pill under a segmented control's options: a faint matte fill that follows the pointer. */
+.liquid-hover { position: absolute; transform-origin: center; background: rgb(24 24 27 / 0.06); }
+[data-theme="dark"] .liquid-hover { background: rgb(255 255 255 / 0.07); }
+
+/* ---------------------------------------------------------------------------
+   Chart forming. The GMP line draws left to right (.draw-line), the area behind it is uncovered at the same pace, and each
+   point pops in as the line reaches it (--p is its position along the line, 0 to 1). <InView> holds all of these until the
+   chart is on screen: while held, the "-g" copies below (same keyframes, different names so the animation restarts) sit paused.
+   --------------------------------------------------------------------------- */
+@keyframes chart-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes chart-reveal-g { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes dot-in { from { opacity: 0; scale: 0.2; } to { opacity: 1; scale: 1; } }
+@keyframes dot-in-g { from { opacity: 0; scale: 0.2; } to { opacity: 1; scale: 1; } }
+@keyframes fade-in-soft { from { opacity: 0; } to { opacity: 1; } }
+@keyframes draw-g { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes bar-grow-g { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.draw-line { animation-duration: var(--dur-cinematic); }
+.chart-area { animation: chart-reveal var(--dur-cinematic) var(--ease-out) both; }
+.chart-dot { transform-box: fill-box; transform-origin: center; animation: dot-in var(--dur-transition) var(--ease-out) both; animation-delay: calc(0.05s + var(--p, 0) * 1.15s); }
+.chart-zero { animation: fade-in-soft var(--dur-reveal) var(--ease-out) both; }
+
+.view-anim .draw-line { animation-name: draw-g; animation-play-state: paused; }
+.view-anim .chart-area { animation-name: chart-reveal-g; animation-play-state: paused; }
+.view-anim .chart-dot { animation-name: dot-in-g; animation-play-state: paused; }
+.view-anim .bar-grow { animation-name: bar-grow-g; animation-play-state: paused; }
+.view-anim[data-in] .draw-line, .view-anim[data-in] .chart-area, .view-anim[data-in] .chart-dot, .view-anim[data-in] .bar-grow { animation-play-state: running; }
+
+@media (prefers-reduced-motion: reduce) { .chart-area, .chart-dot, .chart-zero { animation: none !important; } }
+
+/* Nested <InView> blocks: a block that has not been seen yet stays paused even when an ancestor block already has. Must come after the
+   "running" rule above so that it wins for the inner, not-yet-seen block. */
+.view-anim:not([data-in]) .draw-line, .view-anim:not([data-in]) .chart-area, .view-anim:not([data-in]) .chart-dot, .view-anim:not([data-in]) .bar-grow { animation-play-state: paused; }
+
+/* ---------------------------------------------------------------------------
+   Button swipe (same mechanism as the portfolio's Hero "Get In Touch" / contact "Seal & Send" button).
+   A skewed accent stripe (28% of the button) crosses it slowly, then rests. Inside the stripe a copy of the label sits at the
+   button's full width and moves the opposite way, so the label reads in place while its colours invert. Distances are in
+   stripe-widths: 1 / 0.28 = 357.14% crosses the button, and the inner copy moves -28% per stripe-width. Pure CSS.
+   --------------------------------------------------------------------------- */
+.swipe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 28%;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--accent);
+  transform: translateX(-130%) skewX(-18deg);
+  animation: swipe-stripe 5.5s var(--ease-in-out) infinite;
+}
+.swipe__inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 357.14%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  color: var(--accent-fg);
+  transform: translateX(36.4%) skewX(18deg);
+  animation: swipe-label 5.5s var(--ease-in-out) infinite;
+}
+/* The stripe is skewed -18deg and the inner label +18deg about the same mid-height line, so the stripe's edges lean while the
+   label stays upright. Range is -1.3 -> 3.7 stripe-widths (1.3 clears the slant off-screen). */
+@keyframes swipe-stripe {
+  0% { transform: translateX(-130%) skewX(-18deg); }
+  62%, 100% { transform: translateX(370%) skewX(-18deg); }
+}
+@keyframes swipe-label {
+  0% { transform: translateX(36.4%) skewX(18deg); }
+  62%, 100% { transform: translateX(-103.6%) skewX(18deg); }
+}
+@media (prefers-reduced-motion: reduce) { .swipe { display: none; } }
+
+/* Lavender tint for the filter selection pill: still matte and lightly blurred, just a soft violet wash instead of white/grey. */
+.liquid.liquid-lav {
+  background: rgb(196 181 253 / 0.42);
+  border-color: rgb(167 139 250 / 0.3);
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  backdrop-filter: blur(var(--blur-sm));
+  box-shadow: 0 1px 2px rgb(124 58 237 / 0.08);
+}
+[data-theme="dark"] .liquid.liquid-lav {
+  background: rgb(167 139 250 / 0.2);
+  border-color: rgb(167 139 250 / 0.28);
+  box-shadow: none;
+}
+
+/* The selected pill responds to hover too: a deeper lavender while the pointer is on it (the swell itself is a spring in Liquid.tsx). */
+.liquid.liquid-lav { transition: background-color var(--dur-interactive) var(--ease-out), border-color var(--dur-interactive) var(--ease-out); }
+.liquid.liquid-lav[data-lift] { background: rgb(196 181 253 / 0.62); border-color: rgb(167 139 250 / 0.5); }
+[data-theme="dark"] .liquid.liquid-lav[data-lift] { background: rgb(167 139 250 / 0.32); border-color: rgb(167 139 250 / 0.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive::before { display: none; }              /* no cursor-following spotlight */
+  .interactive:hover, .interactive:active { transform: none; }
+}
+
+/* Route progress hairline (components/nav/RouteProgress.tsx): trickles toward 90% while loading, then completes and fades. */
+.route-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 70; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent)); transform-origin: left;
+  transform: scaleX(0.9); opacity: 1;
+}
+.route-progress[data-state="run"] { animation: rp-run 8s cubic-bezier(0.1, 0.6, 0.2, 1) forwards; }
+.route-progress[data-state="done"] { animation: rp-done var(--dur-transition) var(--ease-out) forwards; }
+@keyframes rp-run { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
+@keyframes rp-done { to { transform: scaleX(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .route-progress { display: none; } }
+
+/* ---------------------------------------------------------------------------
+   Opening animation (components/OpeningAnimation.tsx). Pure CSS timeline, ~1.7 s:
+     0.00-0.85 s  the growth line draws, the glowing head follows it, area fills in behind
+     0.85-0.95 s  the endpoint appears and pulses (a short pause)
+     0.95-1.70 s  a circular hole opens from the endpoint (mask radius animated via a registered custom property) with a thin ring
+                  riding its edge, revealing the real site underneath; then the overlay is hidden.
+   The overlay never takes pointer events. --intro-ox/oy/R are set once by a tiny inline script (endpoint position and the radius
+   needed to cover the viewport); the fallbacks below keep it correct even if that script never ran.
+   --------------------------------------------------------------------------- */
+@property --intro-r { syntax: "<length>"; inherits: true; initial-value: 0px; }
+
+.intro-overlay { display: none; }
+html[data-intro="play"] .intro-overlay,
+html[data-intro="reduced"] .intro-overlay {
+  display: block;
+  position: fixed; inset: 0; z-index: 100; pointer-events: none;
+  background:
+    radial-gradient(48rem 30rem at 12% -8%, var(--blob-1), transparent 70%),
+    radial-gradient(40rem 26rem at 92% 4%, var(--blob-2), transparent 70%),
+    var(--bg);
+}
+html[data-intro="play"] .intro-overlay {
+  -webkit-mask-image: radial-gradient(circle at var(--intro-ox, 50vw) var(--intro-oy, 50vh), transparent var(--intro-r), #000 calc(var(--intro-r) + 1.5px));
+  mask-image: radial-gradient(circle at var(--intro-ox, 50vw) var(--intro-oy, 50vh), transparent var(--intro-r), #000 calc(var(--intro-r) + 1.5px));
+  animation: intro-open 0.75s var(--ease-cinematic) 0.95s forwards, intro-gone 0s linear 1.71s forwards;
+}
+.intro-stage { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1.25rem; padding: 0 4vw; }
+.intro-label { opacity: 0; letter-spacing: 0.22em; animation: intro-fade-in 0.5s ease 0.1s forwards; }
+.intro-chart { width: min(92vw, 760px); height: auto; overflow: visible; }
+
+.intro-grid line { stroke: var(--grid-line); stroke-width: 1; }
+.intro-ticks line { stroke: var(--border-strong); stroke-width: 1.5; stroke-linecap: round; opacity: 0; animation: intro-fade-in 0.35s ease forwards; }
+.intro-dots circle { fill: var(--accent); opacity: 0; animation: intro-dot 0.9s ease-out forwards; }
+.intro-dots circle:nth-child(2) { animation-delay: 0.25s; } .intro-dots circle:nth-child(3) { animation-delay: 0.45s; }
+.intro-dots circle:nth-child(4) { animation-delay: 0.65s; } .intro-dots circle:nth-child(5) { animation-delay: 0.8s; }
+
+.intro-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: intro-draw 0.8s var(--ease-draw) 0.05s forwards; }
+.intro-area { clip-path: inset(0 100% 0 0); animation: intro-area 0.8s var(--ease-draw) 0.05s forwards; }
+.intro-head { offset-distance: 0%; animation: intro-head 0.8s var(--ease-draw) 0.05s forwards; }
+.intro-end { fill: var(--accent); opacity: 0; animation: intro-fade-in 0.15s ease 0.8s forwards; }
+.intro-pulse { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0; transform-box: fill-box; transform-origin: center; animation: intro-pulse 0.3s ease-out 0.85s forwards; }
+
+/* the reveal ring rides the edge of the hole (same easing, so the two stay locked together) */
+.intro-ring {
+  position: absolute; left: var(--intro-ox, 50vw); top: var(--intro-oy, 50vh);
+  width: calc(var(--intro-R, 150vmax) * 2); height: calc(var(--intro-R, 150vmax) * 2);
+  margin: calc(var(--intro-R, 150vmax) * -1) 0 0 calc(var(--intro-R, 150vmax) * -1);
+  border-radius: 50%; border: 2px solid var(--accent-2); opacity: 0; transform: scale(0); will-change: transform, opacity;
+}
+html[data-intro="play"] .intro-ring { animation: intro-ring 0.75s var(--ease-cinematic) 0.95s forwards; }
+
+@keyframes intro-draw { to { stroke-dashoffset: 0; } }
+@keyframes intro-area { to { clip-path: inset(0 0 0 0); } }
+@keyframes intro-head { to { offset-distance: 100%; } }
+@keyframes intro-fade-in { to { opacity: 1; } }
+@keyframes intro-dot { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.55; } 100% { opacity: 0.25; transform: translateY(0); } }
+@keyframes intro-pulse { 0% { opacity: 0.7; transform: scale(1); } 100% { opacity: 0; transform: scale(3.2); } }
+@keyframes intro-open { to { --intro-r: var(--intro-R, 150vmax); } }
+@keyframes intro-ring { 0% { opacity: 0.7; transform: scale(0); } 85% { opacity: 0.35; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes intro-gone { to { visibility: hidden; } }
+
+/* skip (seen this session, ?intro=0, or a press/key during the intro): overlay is simply not there */
+html[data-intro="skip"] .intro-overlay { display: none; }
+
+/* reduced motion: no chart, just a short fade from the page background to the site */
+html[data-intro="reduced"] .intro-overlay { animation: intro-quick 0.3s ease forwards; }
+html[data-intro="reduced"] .intro-stage, html[data-intro="reduced"] .intro-ring { display: none; }
+@keyframes intro-quick { 0% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+/* small screens: keep the line, the head, the endpoint and the reveal; drop the extras */
+@media (max-width: 640px) { .intro-extra, .intro-label { display: none; } }
+
+/* A page can opt out of the site footer by rendering <div data-no-footer hidden /> (used by /contact). */
+body:has([data-no-footer]) footer { display: none; }
+
+/* Touch / small screens: static glass cards drop their backdrop blur. Dozens of overlapping backdrop-filter layers are the single
+   most expensive thing on a phone GPU, and over this page's flat background the blur is barely visible. The navbar and the open
+   menu (which really do pass over content) keep theirs. */
+@media (hover: none), (max-width: 640px) {
+  .glass:not(.nav-glass):not(#mobile-menu) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* Touch: every control gets a >=44px hit area by growing an invisible ::after, so the visible layout is untouched and desktop (fine pointer)
+   is unaffected. .hit = small round controls; .hit-y = pills in a row (vertical growth only, so neighbours never overlap);
+   .hit-text = standalone text links (about 21px tall). */
+@media (pointer: coarse) {
+  .hit, .hit-y, .hit-text, .contact-reach, [role="radio"] { position: relative; }
+  .hit::after { content: ""; position: absolute; inset: -4px; }
+  .hit-y::after, [role="radio"]::after { content: ""; position: absolute; inset-block: -4px; inset-inline: 0; }
+  .hit-text::after { content: ""; position: absolute; inset-block: -12px; inset-inline: -4px; }
+  .contact-reach::after { content: ""; position: absolute; inset-block: -7px; inset-inline: 0; }
+  /* iOS Safari zooms the page when a focused field is under 16px. */
+  /* Single-line fields: 44px tall hit area with an unchanged visual footprint (extra padding is cancelled by an equal negative margin). */
+  /* 16px so iOS Safari does not zoom on focus; line-height 1.4 keeps the line box at the original ~22.5px, so nothing moves. Higher specificity than the letter's own rule, which loads later. */
+  input.written-line__input { font-size: 16px; line-height: 1.4; padding-block: 11px; margin-block: -8px; }
+}
+@media (pointer: coarse) { button.attn { min-width: 2.75rem; min-height: 2.75rem; } }

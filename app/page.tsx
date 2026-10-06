@@ -1,69 +1,106 @@
-import Image from "next/image";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { getAllIpos } from "@/lib/ipo-data";
+import { IpoCard, CardGrid, Section, Disclaimer, Empty } from "@/components/ui";
+import { isThin } from "@/lib/seo";
+import { dateTimeIST } from "@/lib/format";
+import { deriveIpo } from "@/lib/gmp";
+import { GlassCard } from "@/components/glass/GlassStatic";
+import { Magnetic } from "@/components/motion/Magnetic";
+import { Icon } from "@/components/Icon";
+import { Typewriter } from "@/components/Typewriter";
+import { Spotlight } from "@/components/Spotlight";
+import { WarmIdle } from "@/components/nav/Prefetch";
 
-export default function Home() {
+export const revalidate = 14400;
+export const metadata: Metadata = {
+  title: { absolute: "Indian IPO GMP Today: Open & Upcoming IPOs, Dates and Status" },
+  alternates: { canonical: "/" },
+};
+
+const t = (v: string | null) => (v ? Date.parse(v) : Infinity);
+
+export default async function Home() {
+  const { ipos, fetchedAt } = await getAllIpos();
+  const open = ipos.filter((i) => i.status === "open").sort((a, b) => t(a.dates.close) - t(b.dates.close));
+  const upcomingAll = ipos.filter((i) => i.status === "upcoming");
+  const upcoming = upcomingAll.filter((i) => !isThin(i)).sort((a, b) => t(a.dates.open) - t(b.dates.open)).slice(0, 6);
+  const withGmp = ipos
+    .filter((i) => i.gmp && (i.status === "open" || i.status === "closed"))
+    .sort((a, b) => (Date.parse(b.gmp?.updatedAt ?? "") || 0) - (Date.parse(a.gmp?.updatedAt ?? "") || 0))
+    .slice(0, 6);
+
+  // Spotlight: open IPO with the highest derivable GMP % (never treats a missing GMP as zero), else the first open one.
+  const ranked = open.map((i) => ({ i, p: deriveIpo(i).estGainPct })).filter((x): x is { i: typeof x.i; p: number } => x.p !== null).sort((a, b) => b.p - a.p);
+  const spotlight = ranked[0]?.i ?? open[0] ?? null;
+  const stats = [
+    { label: "Open now", value: String(open.length), sub: "accepting bids" },
+    { label: "Upcoming", value: String(upcomingAll.length), sub: "announced" },
+    { label: "Reporting GMP", value: String(ipos.filter((i) => i.gmp && (i.status === "open" || i.status === "upcoming")).length), sub: "open + upcoming" },
+    { label: "Tracked", value: String(ipos.length), sub: "IPOs in the last 12 months" },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <>
+      <WarmIdle hrefs={open.slice(0, 4).map((i) => `/ipo/${i.slug}`)} />
+      <section className="grid items-stretch gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 xl:gap-20">
+        <div className="flex flex-col justify-center">
+          <div className="enter t-small inline-flex w-fit items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-muted">
+            <span className="live-dot text-gain" aria-hidden /> Data fetched {dateTimeIST(fetchedAt)}
+          </div>
+          <h1 className="t-display enter mt-8" style={{ "--i": 1 } as React.CSSProperties}>
+            <Typewriter
+              loop={false}
+              label="Indian IPOs, GMP and status at a glance."
+              parts={[
+                { text: "Indian IPOs, " },
+                { text: "GMP and status", words: ["GMP and status", "price bands", "dates and lots", "listing gains"], className: "bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent" },
+                { text: " at a glance." },
+              ]}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </h1>
+          <p className="t-body enter mt-7 max-w-xl text-lg" style={{ "--i": 2 } as React.CSSProperties}>
+            IPOs open or coming up on NSE and BSE, with the unofficial grey-market premium set against the price band, so you can see what market chatter implies.
+          </p>
+          <div className="enter mt-10 flex flex-wrap gap-4" style={{ "--i": 3 } as React.CSSProperties}>
+            <Magnetic strength={10}><Link href="/ipo-gmp-today" className="btn btn-primary !px-7 !py-4 !text-base">Live GMP table <Icon name="arrow" size={17} className="ico-right" /></Link></Magnetic>
+            <Magnetic strength={5}><Link href="/upcoming-ipos" className="btn btn-ghost relative overflow-hidden !px-7 !py-4 !text-base">
+              Upcoming IPOs
+              {/* Slow diagonal swipe (ported from the portfolio's .cp-swipe): an accent stripe crosses the button and the label inverts inside it. */}
+              <span aria-hidden="true" className="swipe"><span className="swipe__inner">Upcoming IPOs</span></span>
+            </Link></Magnetic>
+          </div>
         </div>
-      </main>
-    </div>
+        {spotlight && <Spotlight ipo={spotlight} />}
+      </section>
+
+      <div className="mt-14 grid grid-cols-2 gap-4 lg:mt-20 lg:grid-cols-4 lg:gap-6">
+        {stats.map((s, k) => (
+          <GlassCard key={s.label} className="enter p-6 lg:p-8" style={{ "--i": 4 + k } as React.CSSProperties}>
+            <p className="t-caption">{s.label}</p>
+            <p className="t-metric mt-4 text-5xl lg:text-6xl">{s.value}</p>
+            <p className="t-small mt-3 text-faint lg:truncate">{s.sub}</p>
+          </GlassCard>
+        ))}
+      </div>
+
+      <div className="enter mt-14" style={{ "--i": 8 } as React.CSSProperties}><Disclaimer /></div>
+
+      <Section title="Open for subscription" note="Sorted by closing date.">
+        {open.length ? (
+          <CardGrid>{open.map((i, k) => <IpoCard key={i.slug} ipo={i} index={k} />)}</CardGrid>
+        ) : <Empty>No IPOs are open for subscription right now.</Empty>}
+      </Section>
+
+      <Section title="Upcoming IPOs" action={{ href: "/upcoming-ipos", label: "All upcoming IPOs" }}>
+        {upcoming.length ? <CardGrid>{upcoming.map((i, k) => <IpoCard key={i.slug} ipo={i} index={k} />)}</CardGrid>
+          : <Empty>No upcoming IPOs with confirmed details yet.</Empty>}
+      </Section>
+
+      <Section title="Latest GMP updates" note="Open and recently closed IPOs that have a reported GMP." action={{ href: "/ipo-gmp-today", label: "Full sortable GMP table" }}>
+        {withGmp.length ? <CardGrid>{withGmp.map((i, k) => <IpoCard key={i.slug} ipo={i} index={k} />)}</CardGrid>
+          : <Empty>No GMP has been reported for current IPOs yet.</Empty>}
+      </Section>
+    </>
   );
 }
