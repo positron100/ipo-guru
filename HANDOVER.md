@@ -1,7 +1,7 @@
 # Handover: IPO GMP Desk (`ipo-gmp-tracker`)
 
-Last updated: 2026-10-07. Status: **feature-complete and QA'd locally; mobile-first pass and the Breathing UI are committed and pushed to GitHub (`positron100/ipo-guru`, branch `main`, commit `ea18aa5`).
-The first Vercel deploy failed on the data source (see section 12); it needs the scraper env vars set.**
+Last updated: 2026-10-08. Status: **feature-complete and QA'd locally; the mobile filter redesign (physical list motion, stage dropdown, expanding type pill) is committed and pushed to GitHub (`positron100/ipo-guru`, branch `main`, commit `f15053e`).
+The first Vercel deploy failed on the data source (see section 12); it still needs a data-source env var set (an IPO Guru key is now available, see section 4).**
 
 ## 1. What this is
 An Indian IPO + GMP (grey market premium) tracking site. Server-rendered Next.js pages built from a pluggable data provider, with a glass UI,
@@ -9,8 +9,8 @@ a shared motion system, a mobile-first layout (phones are a designed layout, not
 Hard constraints from the owner: **free MVP** (no DB, no separate backend, no paid services), SEO is first-class, GMP is always labelled
 unofficial / not advice, missing values stay `null` (never shown as 0), do not copy IPO Watch's UI or content.
 
-**Operating decision:** the owner has **no IPO Guru API key**, so the project is run on the **IPO Watch scraper** (`IPO_DATA_PROVIDER=ipowatch`).
-The code default is still `ipoguru` (see section 4); that is why any environment without the scraper variables fails to build.
+**Operating decision (updated 2026-10-08):** the owner now **has an IPO Guru API key** (free plan). Local `.env.local` uses `IPO_DATA_PROVIDER=ipoguru` + `IPOGURU_API_KEY`, and a production build against the real v2 API succeeded (314 IPOs: the field mapping in `lib/ipoguru-normalize.ts` works on live data).
+The IPO Watch scraper remains available but is development / private use only. The code default is `ipoguru`, so any environment without a key (and without the scraper variables) fails to build.
 
 ## 2. Stack
 Next.js **16.3** (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · **framer-motion** · `cheerio` (scraper parsing) · `server-only`.
@@ -47,7 +47,7 @@ Adding/replacing a provider = implement the interface and add a `case` in `creat
 - `/gmp` is skipped when `/ipos` was just fetched from the network (its `Date` header < 61 s old) to respect 1 req/min; it is fetched on the next regeneration.
 - No `/ipos/{slug}` calls at all. History is stubbed: see the comment at the bottom of `ipoguru-provider.ts`
   (`fetchGmp` → `/ipos/{slug}/gmp/history`, scope `gmp_history`, Standard plan ₹299/mo) and set `capabilities.gmpHistory = true`.
-- **Never run against the real API** (no key). Field names come from the v2 docs; verify on first live build.
+- Verified against the real API on 2026-10-08 (one local `next build`: pages, sitemap and filters all work with 314 IPOs). Each build spends 1-2 of the 10 daily calls; `next start`/`dev` reuse the data cache.
 
 ### IPO Watch scraper (opt-in) — `lib/providers/ipowatch/`
 **Development / private use only.** IPO Watch's Terms of Use forbid copying/republishing and limit use to personal, non-commercial.
@@ -98,8 +98,16 @@ The footer is hidden on `/contact` via a marker (`<div data-no-footer hidden />`
   Dev: `?intro=0` skips it. All its timings are literals in that CSS block (kept out of the shared tokens on purpose).
 - **Breathing UI** (`components/Breathing.tsx` + the "Breathing UI" block at the end of `app/globals.css`): motion that carries meaning. Rules: data moves with meaning, direction moves continuously, a changed value animates only when it really changed. Level 0 static (closed/listed IPOs, history, labels, legal text); level 1 idle (`BreathingArrow` drifts the way it points, `.dot-breathe` ring on the latest-day dot, `ClosingClock` pulses faster as the close date nears and only within 3 IST days, `.rail-seg` light travelling the category progression rail, `CtaArrow` drifts further on hover/press, `.chart-latest-ring` on the chart's latest point, the `▲▼` in `PctPill` drift unless `still`); level 3 only on the spotlight and the open top-mover card: `.breathe-card` breathes their SHADOW and BORDER only. The owner rejected a lavender gradient/glow wash on big cards, so never add a background, gradient or radial glow to them. Idle motion is gated by `still` / status (closed, listed, no-GMP rows never move) and stays under ~25 running infinite animations per page. Everything stops under `prefers-reduced-motion`. Not built on purpose: idle odometer/digit cycling on unchanged numbers (it would imply false movement; the data refreshes only every few hours), rolling digits on change (needs last-seen values stored client-side).
 - **Theme:** `data-theme` is set by an inline script before paint; the toggle uses a View Transition circular clip-path reveal from the toggle's real rect (`themeReveal.ts`).
-- **Phone filters:** on GMP Today below 640px the wrapping pill row is replaced by a `[Filters] [Sort]` row that opens `components/BottomSheet.tsx` (portalled to `<body>`, transform/opacity only, scroll lock, Escape/backdrop/close, safe-area padding, 44px choices, active-filter badge). The desktop pill row and `Select` are unchanged. On phones the board swaps rows without per-row `layout` animation (less jank).
-- **Pills / Liquid:** `Pills fit` (used by the subscription chart filter) keeps every option on one line on phones, filling the card width, and scrolls sideways only if more than ~6 categories exist. `LiquidIndicator` sizes to the selected option's own row when options wrap (it used to span all rows).
+- **Filter / sort toolbar (`components/MarketBoard.tsx`).** One toolbar for every width, with phone and desktop variants of the same state:
+  - Phone (below 640px): row 1 is the **Stage dropdown** (`Select`, closed label "Live 1" / "Awaiting 12" / "Listed 300" with count and status dot) on the left and the **Sort dropdown + order arrow** on the right (all 42px tall); row 2 is the **IPO Type `ExpandPill`**; below that "N of 314 IPOs". Desktop (640px and up): the original stage `Pills`, type `Pills` and `Select` sort, unchanged. The two variants are separate DOM nodes shown/hidden with `sm:` classes.
+  - `components/ExpandPill.tsx` (phone only): ported from the portfolio's "View Project" control (`C:\My Programs\portfolio\src\components\ProjectViewControl.tsx`). Collapsed it hugs the current choice ("All types ->"); tapping widens the SAME pill (measured widths, 0.5 s open / 0.75 s close ease) to fill the row minus a detached round x (red orbiting arc via `.attn.attn--red` in `globals.css`). The options slide + de-blur in one after another and back out in reverse; the collapsed label cross-fades in before the width finishes so text never blinks out. Selecting applies the filter and stays open; x or Escape closes. Left text edge matches the Stage button (36.8px at 390px). Reduced motion = zero durations.
+  - `components/Select.tsx`: options may carry `count`, `dot`, `short` (closed-state label); props `align="right"` and `compact` (hides the visible caption on phones). The menu is **portalled to `<body>`** and `fixed` under the button, with a frosted glass surface (`glass glass-float`, 72% `--bg` tint + blur). Reason: an ancestor with an animated opacity is a *backdrop root*, so a menu inside the page cannot blur the content it covers. `.glass-float` is exempt from the "drop backdrop-filter on touch/small screens" rule. This also applies to the desktop sort menu.
+  - `.enter` in `globals.css` now uses `animation-fill-mode: backwards` (was `both`) so a finished entrance leaves no running animation (not a backdrop root); the end state is identical.
+  - The old phone bottom sheet (`BottomSheet.tsx`) and a horizontal "rail" mode of `Pills` were tried and removed; do not bring them back.
+- **Physical list motion (MarketBoard).** Cards are keyed by slug inside `AnimatePresence mode="popLayout"` with `layout` springs (`spring.flow`): non-matching cards leave (opacity, -6px, 0.98 scale, `pointerEvents: none`), remaining cards glide, returning cards enter from +8px/0.985 scale; sections collapse the same way and the list height eases after a filter swap. Glide is enabled on phones too (rows per group are capped by `FIRST`/`MORE`, so `rendered <= LAYOUT_ANIM_MAX` holds). Sorting reorders the same keyed rows, so they glide to their new places.
+  - `components/LiveCount.tsx`: the result count, the "Show N" style counts and each section badge tween (0.3 s) only when the value really changes; never on mount; the screen-reader copy always holds the final number.
+  - While a filter/sort change settles (`SETTLE_MS` = 700 ms) the root sets `data-moving="true"` and a block at the end of `globals.css` pauses the idle breathing loops (`.drift-*`, `.breathe-card`, `.cta-arrow`, the `::after` rings) so filtering outranks breathing.
+- **Pills / Liquid:** `Pills fit` (used by the subscription chart filter) keeps every option on one line on phones, filling the card width, and scrolls sideways only if more than ~6 categories exist. `LiquidIndicator` sizes to the selected option's own row when options wrap (it used to span all rows). `ExpandPill` reuses `LiquidIndicator` for its option highlight.
 
 ## 8. Contact page
 `/contact`: an editorial intro on the left and the **"Dear Mukul" letter** on the right (`components/contact/ContactLetter.tsx`, ported from the owner's CloudBook project: one element that is the paper, the folding
@@ -140,7 +148,8 @@ See `.env.example`. Intervals have a minimum of 60 s; invalid values fall back t
 
 ## 11. Commands
 ```bash
-npm test            # 51 node:test tests (pure modules; no network)
+npm test            # 51 node:test tests (pure modules; no network). On Node 22.13 it fails with "Unknown file extension .ts": run
+                    # node --experimental-strip-types --test lib/*.test.ts lib/providers/*.test.ts lib/providers/ipowatch/*.test.ts
 npm run typecheck   # needs generated Next types: run `npm run build` (or `npx next typegen`) once on a fresh clone / after deleting .next
 npm run lint
 npm run build       # needs a configured provider because pages fetch data at build time
@@ -160,12 +169,12 @@ of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a f
 - typecheck, lint, 51 tests and a production build (scraper provider) after every phase; last full QA 2026-10-07.
 - Browser checks: navigation timing, back/forward scroll restore, cold-route skeleton scroll, layout shift under 0.002, overflow at 8 phone/tablet widths, contrast, touch targets, opening-animation timing and origin
   (exact at every width and on desktop), contact fields (44 px, tap-anywhere focus, visible with a keyboard-sized viewport), and a desktop regression at 1440.
-- IPO Guru path: pages/sitemap/robots/metadata/JSON-LD against a mock of the v2 API; **never against the real API**.
+- IPO Guru path: pages/sitemap/robots/metadata/JSON-LD against a mock of the v2 API, and (2026-10-08) one production build and local `next start` against the **real v2 API** with the owner's free key.
 - IPO Watch: one live smoke test and local-mirror failure drills (403/404/503/timeout/malformed HTML/site-down all degrade without breaking other pages). Don't re-run the live test without cause.
-- Mobile pass (2026-10-07): 24 route x width combinations at 360/375/390/412/430/462 with touch emulation (no overflow, no clipped text, every tap target >= 44px counting the hit area), filter/sort sheets, menu, row expand, chart tap, CTAs; desktop geometry at 1440 diffed against the original code (identical apart from added wrappers). Breathing UI audit: 1280/1440/1920, CLS about 0, no console errors, zero running infinite animations under reduced motion, financial numbers unchanged after the one-time count-ups settle.
+- Mobile pass (2026-10-07): 24 route x width combinations at 360/375/390/412/430/462 with touch emulation (no overflow, no clipped text, every tap target >= 44px counting the hit area), filter/sort sheets, menu, row expand, chart tap, CTAs; desktop geometry at 1440 diffed against the original code (identical apart from added wrappers). Mobile filter redesign (2026-10-08): at 360/375/390/412/430/462 no page overflow, Stage dropdown (all stages, labels and counts), Sort (all options), type pill expand/select/close, Stage+Type+Sort combos, reset; control heights all 42px; the type pill's right edge lines up with the order arrow above it; frosted menu confirmed by screenshot. Animation *timing* could not be measured (the headless browser runs frames far too slowly), so the open/close choreography was judged by final states only. Breathing UI audit: 1280/1440/1920, CLS about 0, no console errors, zero running infinite animations under reduced motion, financial numbers unchanged after the one-time count-ups settle.
 
 ## 14. Known limitations / not verified
-1. **IPO Guru live shape unverified** (no key). The free plan is non-commercial; Vercel Hobby is also non-commercial.
+1. The free IPO Guru plan is non-commercial / evaluation only (10 requests/day, 1/minute); Vercel Hobby is also non-commercial. The live v2 shape is now verified once (2026-10-08).
 2. **Scraper on public hosting:** a terms restriction and possible IP blocking (section 12). The first visit to a detail page takes seconds (3 serialized requests; 6–15 s when the site is down); pause/queue state is per server process.
 3. **Listed IPO history:** no persistence beyond Next's non-durable data cache. IPO Watch drops IPOs from its listing pages after listing, so their pages disappear under that provider.
 4. Slugs differ between providers; switching provider changes URLs, so a redirect map is needed before a real switch on a live site.
@@ -177,9 +186,10 @@ of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a f
 10. Xflot was evaluated and dropped (undocumented keyless quota, no CORS, unclear licensing). No Xflot code remains.
 11. Only one live IPO has subscription data (3 days), so 4-day / 100x+ layouts were tested with a temporary mock route (deleted), never with real data. KPI order is the existing ranking (Total, Retail, NII, QIB).
 12. Breathing UI gaps by choice: no rolling/odometer digits and no stored last-seen values (nothing animates a number unless it truly changes, and data refreshes only every few hours); the closing clock is day-level (IST), not hour-level; the desktop matrix has no travelling light (the rail exists only in the phone layout; desktop gets a breathing latest-day dot and the chart's latest-point ring).
+13. Mobile filter: leaving-section DOM nodes linger invisibly (and non-interactive) for a couple of seconds after the exit animation; cause not found. The phone Stage/Type controls and the desktop controls are two DOM copies (one hidden by CSS), so queries by role must pick the visible one. `Select`'s menu is portalled and recomputes its position on scroll/resize; it was only exercised on phone widths and one desktop load.
 
 ## 15. Suggested next steps
-1. Set the Vercel env vars (section 12) and redeploy; if the scraper is blocked, decide between a key-based provider and graceful degradation at build time.
+1. Set the data source on Vercel (section 12) and redeploy: the simplest path now is `IPOGURU_API_KEY` (server-only) with the default provider, no scraper variables. Never put the key in `.env.example` (a local edit once did; it must stay blank there) or any committed file.
 2. Decide commercial vs non-commercial; if commercial, get an IPO Guru key (Standard adds GMP history/subscription), confirm terms in writing, and verify `lib/ipoguru-normalize.ts` against one real build (each build spends 1–2 of the 10 daily calls).
 3. Implement `getGmpHistory` for Standard (see section 4) and re-enable the history UI by populating `ipo.history`.
 4. Set `SITE_URL` and the contact variables, and submit `sitemap.xml` to Search Console.
@@ -188,6 +198,7 @@ of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a f
 ## 16. Gotchas
 - `next build` overwrites `.next`; a failed build leaves `next start` with nothing to serve. Rebuild first. Stale `next start` processes keep ports busy on Windows; stop them by port before re-testing.
 - Builds run in several workers and each fetches data; with the scraper the request gap applies per process. `.next/cache` can contain keys if they were set at build time; it is git-ignored, never upload `.next`.
+- **`.env.example` must keep `IPOGURU_API_KEY=` empty.** It once held the real key as an uncommitted local edit; commit only named files (never `git add -A`) and rotate the key if it was ever exposed. `package-lock.json` also showed unexplained local deletions (114 lines); it was left out of commits, check before staging it.
 - `.env.local` is git-ignored. If a build says `IPOGURU_API_KEY is not set`, the scraper variables are missing from that environment, not the key.
 - The test mirrors (a mock IPO Guru API and an IPO Watch mirror with failure switches) were written in a temp scratchpad and are not in the repo.
 - Windows prints `LF will be replaced by CRLF` warnings on `git add`; they are harmless (autocrlf).
