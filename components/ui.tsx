@@ -6,6 +6,7 @@ import { STATUS_LABEL } from "@/lib/seo";
 import { GlowCard } from "@/components/glass/Glass";
 import { GmpBlock } from "@/components/Gmp";
 import { Icon } from "@/components/Icon";
+import { ClosingClock, CtaArrow } from "@/components/Breathing";
 import { InView } from "@/components/motion/InView";
 
 const BADGE: Record<IpoStatus, string> = {
@@ -28,7 +29,7 @@ const boardLabel = (b: Ipo["board"]) => (b === "SME" ? "SME" : b === "MAINBOARD"
 export function IpoCard({ ipo, featured = false, index = 0 }: { ipo: Ipo; featured?: boolean; index?: number }) {
   const board = boardLabel(ipo.board);
   return (
-    <GlowCard as={WarmLink} warm href={`/ipo/${ipo.slug}`} className={`${index < 4 ? "enter" : "reveal"} group flex cursor-pointer flex-col gap-6 p-6 lg:p-7 ${featured ? "sm:col-span-2 lg:p-8" : ""}`} style={{ "--i": index } as React.CSSProperties}>
+    <GlowCard as={WarmLink} warm href={`/ipo/${ipo.slug}`} className={`${index < 4 ? "enter" : "reveal"} group flex cursor-pointer flex-col gap-5 p-5 sm:gap-6 sm:p-6 lg:p-7 ${featured ? "sm:col-span-2 lg:p-8" : ""}`} style={{ "--i": index } as React.CSSProperties}>
       <div className="kid flex items-start justify-between gap-3" style={{ "--i": index, "--c": 0 } as React.CSSProperties}>
         <div className="min-w-0">
           <h3 className={`${featured ? "text-2xl" : "text-lg"} font-semibold leading-snug tracking-tight`}>
@@ -42,10 +43,10 @@ export function IpoCard({ ipo, featured = false, index = 0 }: { ipo: Ipo; featur
 
       <div className="kid" style={{ "--i": index, "--c": 1 } as React.CSSProperties}><GmpBlock ipo={ipo} large={featured} /></div>
 
-      <dl className="kid mt-auto grid grid-cols-3 gap-3 border-t border-line pt-5 text-[0.9375rem]" style={{ "--i": index, "--c": 2 } as React.CSSProperties}>
+      <dl className="kid mt-auto grid grid-cols-3 gap-3 border-t border-line pt-4 text-[0.875rem] sm:pt-5 sm:text-[0.9375rem]" style={{ "--i": index, "--c": 2 } as React.CSSProperties}>
         <Stat label="Upper band" value={rupee(ipo.priceBand.max)} />
         <Stat label="Opens" value={dayMonth(ipo.dates.open)} />
-        <Stat label="Closes" value={dayMonth(ipo.dates.close)} />
+        <Stat label="Closes" value={dayMonth(ipo.dates.close)} extra={ipo.status === "open" ? <ClosingClock close={ipo.dates.close} /> : undefined} />
       </dl>
 
       {ipo.gmp?.updatedAt && <div className="sr-only">GMP updated {shortIST(ipo.gmp.updatedAt)}</div>}
@@ -53,9 +54,9 @@ export function IpoCard({ ipo, featured = false, index = 0 }: { ipo: Ipo; featur
   );
 }
 
-const Stat = ({ label, value }: { label: string; value: string | null }) => (
+const Stat = ({ label, value, extra }: { label: string; value: string | null; extra?: React.ReactNode }) => (
   <div className="min-w-0">
-    <dt className="t-caption">{label}</dt>
+    <dt className="t-caption flex items-center gap-1.5">{label}{extra}</dt>
     <dd className="num mt-1 truncate font-medium">{value ?? <span className="font-normal text-faint">–</span>}</dd>
   </div>
 );
@@ -65,7 +66,7 @@ export const CardGrid = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const Section = ({ title, children, note, action }: { title: string; children: React.ReactNode; note?: string; action?: { href: string; label: string } }) => (
-  <section className="reveal mt-16 lg:mt-24">
+  <section className="reveal mt-12 sm:mt-16 lg:mt-24">
     <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4 lg:mb-8">
       <div>
         <h2 className="t-h2 flex items-center gap-2.5">
@@ -75,7 +76,7 @@ export const Section = ({ title, children, note, action }: { title: string; chil
         {note && <p className="t-small mt-2 pl-3.5 text-faint">{note}</p>}
       </div>
       {action && (
-        <Link href={action.href} className="hit-text group link t-small inline-flex shrink-0 items-center gap-1.5 font-medium text-muted">{action.label} <Icon name="arrow" size={14} className="ico-right" /></Link>
+        <Link href={action.href} className="hit-text group link t-small inline-flex shrink-0 items-center gap-1.5 font-medium text-muted">{action.label} <CtaArrow size={14} /></Link>
       )}
     </div>
     <InView>{children}</InView>
@@ -84,7 +85,7 @@ export const Section = ({ title, children, note, action }: { title: string; chil
 
 export function Disclaimer() {
   return (
-    <aside role="note" className="glass glass-card flex gap-4 border-warn/25 bg-warn-soft p-5 text-[0.9375rem] leading-relaxed text-fg lg:px-7">
+    <aside role="note" className="glass glass-card flex gap-3 border-warn/25 bg-warn-soft p-4 text-sm sm:gap-4 sm:p-5 sm:text-[0.9375rem] leading-relaxed text-fg lg:px-7">
       <Icon name="alert" size={20} className="mt-0.5 shrink-0 text-warn" />
       <p className="text-muted">
         <strong className="font-semibold text-fg">Grey-market premium (GMP) is unofficial, unregulated sentiment.</strong> It is not published by any exchange or regulator, can change quickly or be wrong,
@@ -95,7 +96,7 @@ export function Disclaimer() {
 }
 
 export const Empty = ({ children }: { children: React.ReactNode }) => (
-  <p className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface p-12 text-center text-base text-faint">{children}</p>
+  <p className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface p-8 text-center text-base text-faint sm:p-12">{children}</p>
 );
 
 /** Page title block shared by the list pages. */

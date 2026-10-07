@@ -9,9 +9,9 @@ import { NA } from "@/lib/format";
 export function Metric({
   label, value, sub, icon, size = "md", index = 0, className = "",
 }: { label: string; value: string | null; sub?: string | null; icon?: IconName; size?: "sm" | "md" | "lg"; index?: number; className?: string }) {
-  const big = size === "lg" ? "text-5xl lg:text-6xl" : size === "md" ? "text-3xl lg:text-4xl" : "text-xl";
+  const big = size === "lg" ? "text-4xl sm:text-5xl lg:text-6xl" : size === "md" ? "text-2xl sm:text-3xl lg:text-4xl" : "text-lg sm:text-xl";
   return (
-    <GlowCard className={`enter flex flex-col justify-between gap-5 ${size === "sm" ? "p-5" : "p-5 sm:p-6 lg:p-8"} ${className}`} style={{ "--i": index } as React.CSSProperties}>
+    <GlowCard className={`enter flex flex-col justify-between gap-4 sm:gap-5 ${size === "sm" ? "p-4 sm:p-5" : "p-4 sm:p-6 lg:p-8"} ${className}`} style={{ "--i": index } as React.CSSProperties}>
       <div className="flex items-center gap-2 text-faint">
         {icon && <Icon name={icon} size={16} className="ico-pop" />}
         <p className="t-caption">{label}</p>

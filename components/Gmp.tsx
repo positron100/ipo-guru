@@ -15,13 +15,13 @@ export const TONE_PILL: Record<Tone, string> = {
 export const gmpText = (v: number) => (v === 0 ? "₹0" : signedRupee(v)!);
 export const missingGmp = (status: Ipo["status"]) => (status === "upcoming" || status === "open" ? "Not reported yet" : "Not available");
 
-export function PctPill({ value, className = "", count = false }: { value: number | null; className?: string; count?: boolean }) {
+export function PctPill({ value, className = "", count = false, still = false }: { value: number | null; className?: string; count?: boolean; still?: boolean }) {
   if (value === null) return null;
   const t = toneOf(value);
   return (
     <span className={`num inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.8125rem] font-semibold ${TONE_PILL[t]} ${className}`}>
-      {t === "gain" && <span aria-hidden>▲</span>}
-      {t === "loss" && <span aria-hidden>▼</span>}
+      {t === "gain" && <span aria-hidden className={still ? "" : "drift-up"}>▲</span>}
+      {t === "loss" && <span aria-hidden className={still ? "" : "drift-down"}>▼</span>}
       {count ? <CountUp value={value} format="pct" /> : pct(value)}
     </span>
   );
@@ -40,8 +40,8 @@ export function GmpBlock({ ipo, large = false }: { ipo: Ipo; large?: boolean }) 
           <div className="mt-1.5 text-sm text-faint">{missingGmp(ipo.status)}</div>
         ) : (
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={`t-metric ${large ? "text-5xl" : "text-[2.25rem]"} ${TONE_TEXT[t]}`}><CountUp value={v} format="gmp" /></span>
-            <PctPill value={d.estGainPct} count />
+            <span className={`t-metric ${large ? "text-4xl sm:text-5xl" : "text-[2rem] sm:text-[2.25rem]"} ${TONE_TEXT[t]}`}><CountUp value={v} format="gmp" /></span>
+            <PctPill value={d.estGainPct} count still={ipo.status === "closed" || ipo.status === "listed"} />
             {d.pctMismatch && (
               <abbr title="The data provider's own GMP percentage disagrees with this figure" className="text-xs text-faint no-underline">*</abbr>
             )}
@@ -51,7 +51,7 @@ export function GmpBlock({ ipo, large = false }: { ipo: Ipo; large?: boolean }) 
       {d.estListingPrice !== null && (
         <div className="shrink-0 text-right">
           <div className="t-caption">Est. listing</div>
-          <div className="num mt-1.5 text-lg font-semibold">{rupee(d.estListingPrice)}</div>
+          <div className="num mt-1.5 text-base font-semibold sm:text-lg">{rupee(d.estListingPrice)}</div>
         </div>
       )}
     </div>

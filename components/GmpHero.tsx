@@ -16,7 +16,7 @@ function Meter({ value }: { value: number }) {
   const w = Math.min(Math.abs(value), 25) / 25 * 50;
   const t = toneOf(value);
   return (
-    <div className="mt-8" role="img" aria-label={`Estimated ${pct(value)} versus the upper price band`}>
+    <div className="mt-6 sm:mt-8" role="img" aria-label={`Estimated ${pct(value)} versus the upper price band`}>
       <div className="relative h-1.5 rounded-full bg-line">
         <div className="absolute inset-y-[-3px] left-1/2 w-px bg-line-strong" />
         <div
@@ -40,7 +40,7 @@ export function GmpHero({ ipo }: { ipo: Ipo }) {
   const move = delta === null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
 
   return (
-    <GlassPanel className={`enter overflow-hidden bg-gradient-to-br ${GLOW[t]} to-transparent p-7 sm:p-10 lg:p-14`} style={{ "--i": 2 } as React.CSSProperties}>
+    <GlassPanel className={`enter overflow-hidden bg-gradient-to-br ${GLOW[t]} to-transparent p-5 sm:p-10 lg:p-14`} style={{ "--i": 2 } as React.CSSProperties}>
       <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="t-caption flex items-center gap-2"><Icon name="bolt" size={13} />Grey-market premium · unofficial</div>
         {updated && (
@@ -48,14 +48,14 @@ export function GmpHero({ ipo }: { ipo: Ipo }) {
         )}
       </div>
 
-      <div className="mt-8 grid gap-10 md:grid-cols-[1.2fr_1fr] md:items-end lg:gap-16">
+      <div className="mt-6 grid gap-6 sm:mt-8 sm:gap-10 md:grid-cols-[1.2fr_1fr] md:items-end lg:gap-16">
         <div>
           <div className="t-small text-muted">{stale ? "Last reported GMP" : "Current GMP"}</div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className={`t-metric text-[clamp(3.5rem,10vw,7.5rem)] ${v === null ? "!text-2xl !font-normal text-faint" : TONE_TEXT[t]}`}>
+            <span className={`t-metric text-[clamp(3rem,10vw,7.5rem)] ${v === null ? "!text-2xl !font-normal text-faint" : TONE_TEXT[t]}`}>
               {v === null ? "Not reported" : <CountUp value={v} format="gmp" />}
             </span>
-            {v !== null && <PctPill value={d.estGainPct} count className="!px-3 !py-1 !text-sm" />}
+            {v !== null && <PctPill value={d.estGainPct} count still={stale} className="!px-3 !py-1 !text-sm" />}
             {move && delta !== null && (
               <span className={`${move === "up" ? "trend-up text-gain" : move === "down" ? "trend-down text-loss" : "text-muted"} t-small inline-flex items-center gap-1.5 font-medium`}>
                 <Icon name={move} size={15} />
@@ -67,7 +67,7 @@ export function GmpHero({ ipo }: { ipo: Ipo }) {
           {v !== null && d.estGainPct !== null && <Meter value={d.estGainPct} />}
         </div>
 
-        <dl className="grid grid-cols-2 gap-4">
+        <dl className="grid grid-cols-2 gap-3 sm:gap-4">
           <Cell label="Expected listing" value={rupee(d.estListingPrice)} strong />
           <Cell label="Listing gain" value={pct(d.estGainPct)} tone={toneOf(d.estGainPct)} />
           <Cell label="GMP per lot" value={signedRupee(d.gainPerLot)} tone={toneOf(d.gainPerLot)} />
@@ -87,9 +87,9 @@ export function GmpHero({ ipo }: { ipo: Ipo }) {
 
 function Cell({ label, value, tone = "none", strong = false }: { label: string; value: string | null; tone?: ReturnType<typeof toneOf>; strong?: boolean }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 transition-colors duration-300 hover:border-line-strong hover:bg-[var(--surface-hover)]">
+    <div className="min-w-0 rounded-2xl border border-line bg-surface p-4 transition-colors sm:p-5 duration-300 hover:border-line-strong hover:bg-[var(--surface-hover)]">
       <dt className="t-caption">{label}</dt>
-      <dd className={`t-metric mt-2 ${strong ? "text-3xl" : "text-2xl"} ${value === null ? "!text-sm !font-normal text-faint" : tone === "none" ? "" : TONE_TEXT[tone]}`}>
+      <dd className={`t-metric mt-2 ${strong ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"} ${value === null ? "!text-sm !font-normal text-faint" : tone === "none" ? "" : TONE_TEXT[tone]}`}>
         {value ?? "Not available"}
       </dd>
     </div>

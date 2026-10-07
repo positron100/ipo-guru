@@ -777,3 +777,56 @@ body:has([data-no-footer]) footer { display: none; }
   input.written-line__input { font-size: 16px; line-height: 1.4; padding-block: 11px; margin-block: -8px; }
 }
 @media (pointer: coarse) { button.attn { min-width: 2.75rem; min-height: 2.75rem; } }
+
+/* ---------------------------------------------------------------------------
+   Breathing UI (components/Breathing.tsx). Motion that carries meaning, calm and mostly transform/opacity.
+   Level 1 idle: drifting arrows, breathing dots, the closing clock, the light along a progression rail.
+   Static things (closed IPOs, historical numbers, labels) get none of it. All of it stops under prefers-reduced-motion.
+   --------------------------------------------------------------------------- */
+@keyframes drift-up { 0% { translate: 0 3px; opacity: 0.25; } 30%, 70% { opacity: 1; } 100% { translate: 0 -3px; opacity: 0.25; } }
+@keyframes drift-down { 0% { translate: 0 -3px; opacity: 0.25; } 30%, 70% { opacity: 1; } 100% { translate: 0 3px; opacity: 0.25; } }
+@keyframes drift-flat { 0% { translate: -3px 0; opacity: 0.25; } 30%, 70% { opacity: 1; } 100% { translate: 3px 0; opacity: 0.25; } }
+.drift-up { animation: drift-up 1.8s ease-in-out infinite; }
+.drift-down { animation: drift-down 1.8s ease-in-out infinite; }
+.drift-flat { animation: drift-flat 1.8s ease-in-out infinite; }
+
+/* a dot's soft ring (the dot itself must be positioned) */
+.dot-breathe::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent); animation: pulse-ring 2.4s ease-out infinite; }
+
+/* closing clock: the ring pulses faster as the deadline nears */
+@keyframes clock-ring { 0% { transform: scale(0.9); opacity: var(--clock-o, 0.45); } 80%, 100% { transform: scale(1.7); opacity: 0; } }
+.clock-pulse { position: relative; display: inline-grid; place-items: center; color: var(--warn); --clock-t: 3.4s; --clock-o: 0.4; }
+.clock-pulse[data-urgency="mid"] { --clock-t: 2.2s; --clock-o: 0.6; }
+.clock-pulse[data-urgency="fast"] { --clock-t: 1.3s; --clock-o: 0.85; }
+.clock-pulse::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; animation: clock-ring var(--clock-t) ease-out infinite; }
+
+/* featured cards only (never every card): the card's shadow and border luminosity breathe about every 5 s. No background, gradient
+   or size change. The card's own box-shadow is animated (2 cards at most), the shadow lists must stay the same length. */
+@keyframes card-breathe {
+  0%, 100% { box-shadow: var(--shadow-sm), inset 0 1px 0 var(--glass-highlight), 0 0 0 0 transparent, 0 0 0 0 transparent; border-color: var(--border); }
+  50% { box-shadow: var(--shadow-sm), inset 0 1px 0 var(--glass-highlight), 0 12px 34px -16px color-mix(in oklab, var(--accent) 36%, transparent), 0 0 0 1px color-mix(in oklab, var(--accent) 16%, transparent); border-color: color-mix(in oklab, var(--accent) 22%, var(--border)); }
+}
+.breathe-card { animation: card-breathe 5.5s ease-in-out infinite; }
+
+/* CTA arrow: drifts toward where it points, further when the button/card is hovered or pressed (translate only: no layout shift) */
+@keyframes cta-drift { 0%, 100% { translate: 0 0; } 50% { translate: var(--cta-amp, 3px) 0; } }
+.cta-arrow { animation: cta-drift 1.8s ease-in-out infinite; }
+.btn:hover .cta-arrow, .btn:active .cta-arrow, .group:hover .cta-arrow, .group:active .cta-arrow, a:active > .cta-arrow { --cta-amp: 6px; }
+
+/* the latest point on a chart: a soft ring that expands and fades (the data itself never moves) */
+@keyframes latest-ring { 0% { transform: scale(1); opacity: 0.55; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
+.chart-latest-ring { transform-box: fill-box; transform-origin: center; pointer-events: none; animation: latest-ring 2.4s ease-out infinite; }
+
+/* progression rail: a light travels Day 1 -> last day, one segment after another (--seg = segment index) */
+@keyframes rail-travel { 0% { top: -14px; } 25%, 100% { top: 100%; } }
+.rail-seg { position: absolute; left: 4px; top: 50%; width: 2px; height: 100%; overflow: hidden; pointer-events: none; }
+.rail-seg::after {
+  content: ""; position: absolute; left: 0; top: -14px; width: 100%; height: 14px;
+  background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+  animation: rail-travel 3.6s linear infinite; animation-delay: calc(var(--seg, 0) * 0.9s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-up, .drift-down, .drift-flat, .breathe-card, .cta-arrow, .chart-latest-ring, .rail-seg::after, .dot-breathe::after, .clock-pulse::after { animation: none !important; }
+  .rail-seg, .clock-pulse::after { display: none; }
+}

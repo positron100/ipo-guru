@@ -12,15 +12,15 @@ const TONE = {
 export function SubscriptionInsight({ insight }: { insight: Insight }) {
   const t = TONE[insight.tone];
   return (
-    <GlassCard as="aside" aria-label="Subscription insight" className="enter flex gap-5 p-6 lg:p-8" style={{ "--i": 3 } as React.CSSProperties}>
-      <span className={`${t.trend} grid size-12 shrink-0 place-items-center rounded-2xl ${t.box}`}><Icon name={t.icon} size={20} /></span>
+    <GlassCard as="aside" aria-label="Subscription insight" className="enter flex gap-3 p-4 sm:gap-5 sm:p-6 lg:p-8" style={{ "--i": 3 } as React.CSSProperties}>
+      <span className={`${t.trend} grid size-10 shrink-0 sm:size-12 place-items-center rounded-2xl ${t.box}`}><Icon name={t.icon} size={20} /></span>
       <div className="min-w-0">
         <p className="t-caption">Subscription insight</p>
-        <h4 className="t-h3 mt-2 text-xl">{insight.title}</h4>
-        <div className="t-body mt-3 max-w-3xl space-y-1.5">
+        <h4 className="t-h3 mt-2 text-lg sm:text-xl">{insight.title}</h4>
+        <div className="t-body mt-2 max-w-3xl space-y-1.5 text-[0.9375rem] sm:mt-3 sm:text-[1rem]">
           {insight.lines.map((l) => <p key={l}>{l}</p>)}
         </div>
-        <p className="t-small mt-4 text-faint">A reading of the published figures only. It is not a prediction of the listing price or investment advice.</p>
+        <p className="t-small mt-3 text-[0.75rem] text-faint sm:mt-4 sm:text-[0.875rem]">A reading of the published figures only. It is not a prediction of the listing price or investment advice.</p>
       </div>
     </GlassCard>
   );

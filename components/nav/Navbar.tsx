@@ -41,9 +41,12 @@ export function Navbar({ name }: { name: string }) {
   }, []);
   useEffect(() => {
     if (!open) return;
+    // a tap anywhere outside the header closes the menu
+    const away = (e: PointerEvent) => { if (!(e.target as Element).closest("header")) setOpen(false); };
+    document.addEventListener("pointerdown", away);
     const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
+    return () => { document.removeEventListener("pointerdown", away); window.removeEventListener("keydown", k); };
   }, [open]);
 
   return (

@@ -28,7 +28,7 @@ export function SubscriptionSection({ data }: { data: SubscriptionData }) {
   ];
 
   return (
-    <div className="space-y-12 lg:space-y-16">
+    <div className="space-y-14 sm:space-y-12 lg:space-y-16">
       <SubscriptionKpis kpis={kpis} />
 
       {model.hasHistory && (
@@ -43,7 +43,7 @@ export function SubscriptionSection({ data }: { data: SubscriptionData }) {
         </div>
       )}
 
-      <div>
+      <div className="max-sm:border-t max-sm:border-line max-sm:pt-10">
         <h3 className="t-h2">Category-wise subscription</h3>
         <p className="t-body mt-2 mb-6">Exact multiples by investor category and day. The latest day is highlighted.</p>
         <InView className="space-y-4 lg:space-y-5">

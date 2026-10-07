@@ -46,7 +46,7 @@ export function ScrollDownHint() {
     ro.observe(document.body);
     return () => { removeEventListener("scroll", check); removeEventListener("resize", check); ro.disconnect(); };
   }, []);
-  return <Chip dir="down" show={more} onClick={() => scrollBy({ top: innerHeight * 0.85, behavior: smooth() })} className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-5 sm:right-8 lg:right-12" />;
+  return <Chip dir="down" show={more} onClick={() => scrollBy({ top: innerHeight * 0.85, behavior: smooth() })} className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-5 sm:bottom-6 sm:right-8 lg:right-12 [@media(hover:none)]:hidden" />;
 }
 
 /**

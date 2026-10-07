@@ -74,6 +74,14 @@ export function SubscriptionChart({ dayLabels, series }: { dayLabels: string[]; 
     return `M${pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L")} L${pts.at(-1)![0].toFixed(1)},${y(0)} L${pts[0][0].toFixed(1)},${y(0)} Z`;
   };
 
+  // Touch: the reading stays after the finger lifts (pointerleave fires on release), until a tap lands outside the chart.
+  useEffect(() => {
+    if (!hover) return;
+    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setHover(null); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [hover]);
+
   const focus = hover?.key ?? (active === "all" ? pillHover : active);
   const dim = (s: Series) => (focus && focus !== s.key ? 0.22 : 1);
 
@@ -116,7 +124,7 @@ export function SubscriptionChart({ dayLabels, series }: { dayLabels: string[]; 
   return (
     <figure>
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <Pills label="Chart category" value={active} onChange={(v) => { setActive(v); setHover(null); }} onHover={setPillHover} options={options} />
+        <Pills fit label="Chart category" value={active} onChange={(v) => { setActive(v); setHover(null); }} onHover={setPillHover} options={options} />
       </div>
 
       <div
@@ -126,8 +134,9 @@ export function SubscriptionChart({ dayLabels, series }: { dayLabels: string[]; 
         tabIndex={0}
         role="group"
         aria-label={`Subscription multiple by day for ${visible.map((s) => s.label).join(", ")}. Use the arrow keys to inspect values.`}
+        onPointerDown={(e) => locate(e.clientX, e.clientY)}
         onPointerMove={(e) => locate(e.clientX, e.clientY)}
-        onPointerLeave={() => setHover(null)}
+        onPointerLeave={(e) => { if (e.pointerType === "mouse") setHover(null); }}
         onBlur={() => setHover(null)}
         onKeyDown={onKey}
       >
@@ -191,6 +200,9 @@ export function SubscriptionChart({ dayLabels, series }: { dayLabels: string[]; 
                 />
               ),
             ),
+          )}
+          {primary && n > 1 && primary.values[n - 1] !== null && (
+            <circle className="chart-latest-ring" cx={x(n - 1)} cy={y(primary.values[n - 1] as number)} r={5} fill="none" stroke={primary.color} strokeWidth={1.6} aria-hidden />
           )}
         </svg>}
 

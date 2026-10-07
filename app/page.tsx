@@ -7,7 +7,7 @@ import { dateTimeIST } from "@/lib/format";
 import { deriveIpo } from "@/lib/gmp";
 import { GlassCard } from "@/components/glass/GlassStatic";
 import { Magnetic } from "@/components/motion/Magnetic";
-import { Icon } from "@/components/Icon";
+import { CtaArrow } from "@/components/Breathing";
 import { Typewriter } from "@/components/Typewriter";
 import { Spotlight } from "@/components/Spotlight";
 import { WarmIdle } from "@/components/nav/Prefetch";
@@ -43,12 +43,12 @@ export default async function Home() {
   return (
     <>
       <WarmIdle hrefs={open.slice(0, 4).map((i) => `/ipo/${i.slug}`)} />
-      <section className="grid items-stretch gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 xl:gap-20">
+      <section className="grid items-stretch gap-8 sm:gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 xl:gap-20">
         <div className="flex flex-col justify-center">
           <div className="enter t-small inline-flex w-fit items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-muted">
             <span className="live-dot text-gain" aria-hidden /> Data fetched {dateTimeIST(fetchedAt)}
           </div>
-          <h1 className="t-display enter mt-8" style={{ "--i": 1 } as React.CSSProperties}>
+          <h1 className="t-display enter mt-6 sm:mt-8" style={{ "--i": 1 } as React.CSSProperties}>
             <Typewriter
               loop={false}
               label="Indian IPOs, GMP and status at a glance."
@@ -59,32 +59,32 @@ export default async function Home() {
               ]}
             />
           </h1>
-          <p className="t-body enter mt-7 max-w-xl text-lg" style={{ "--i": 2 } as React.CSSProperties}>
+          <p className="t-body enter mt-5 max-w-xl text-base sm:mt-7 sm:text-lg" style={{ "--i": 2 } as React.CSSProperties}>
             IPOs open or coming up on NSE and BSE, with the unofficial grey-market premium set against the price band, so you can see what market chatter implies.
           </p>
-          <div className="enter mt-10 flex flex-wrap gap-4" style={{ "--i": 3 } as React.CSSProperties}>
-            <Magnetic strength={10}><Link href="/ipo-gmp-today" className="btn btn-primary !px-7 !py-4 !text-base">Live GMP table <Icon name="arrow" size={17} className="ico-right" /></Link></Magnetic>
-            <Magnetic strength={5}><Link href="/upcoming-ipos" className="btn btn-ghost relative overflow-hidden !px-7 !py-4 !text-base">
+          <div className="enter mt-7 flex flex-wrap gap-3 sm:mt-10 sm:gap-4" style={{ "--i": 3 } as React.CSSProperties}>
+            <Magnetic strength={10}><Link href="/ipo-gmp-today" className="btn btn-primary !px-7 !py-4 !text-base">Live GMP table <CtaArrow size={17} /></Link></Magnetic>
+            <Magnetic strength={5}><Link href="/upcoming-ipos" className="btn btn-ghost relative overflow-hidden !px-6 !py-3.5 !text-[0.9375rem] sm:!px-7 sm:!py-4 sm:!text-base">
               Upcoming IPOs
               {/* Slow diagonal swipe (ported from the portfolio's .cp-swipe): an accent stripe crosses the button and the label inverts inside it. */}
-              <span aria-hidden="true" className="swipe"><span className="swipe__inner">Upcoming IPOs</span></span>
+              <span aria-hidden="true" className="swipe max-sm:hidden"><span className="swipe__inner">Upcoming IPOs</span></span>
             </Link></Magnetic>
           </div>
         </div>
         {spotlight && <Spotlight ipo={spotlight} />}
       </section>
 
-      <div className="mt-14 grid grid-cols-2 gap-4 lg:mt-20 lg:grid-cols-4 lg:gap-6">
+      <div className="mt-10 grid grid-cols-2 gap-3 sm:mt-14 sm:gap-4 lg:mt-20 lg:grid-cols-4 lg:gap-6">
         {stats.map((s, k) => (
-          <GlassCard key={s.label} className="enter p-6 lg:p-8" style={{ "--i": 4 + k } as React.CSSProperties}>
+          <GlassCard key={s.label} className="enter p-4 sm:p-6 lg:p-8" style={{ "--i": 4 + k } as React.CSSProperties}>
             <p className="t-caption">{s.label}</p>
-            <p className="t-metric mt-4 text-5xl lg:text-6xl">{s.value}</p>
-            <p className="t-small mt-3 text-faint lg:truncate">{s.sub}</p>
+            <p className="t-metric mt-3 text-4xl sm:mt-4 sm:text-5xl lg:text-6xl">{s.value}</p>
+            <p className="t-small mt-2 text-faint sm:mt-3 lg:truncate">{s.sub}</p>
           </GlassCard>
         ))}
       </div>
 
-      <div className="enter mt-14" style={{ "--i": 8 } as React.CSSProperties}><Disclaimer /></div>
+      <div className="enter mt-8 sm:mt-14" style={{ "--i": 8 } as React.CSSProperties}><Disclaimer /></div>
 
       <Section title="Open for subscription" note="Sorted by closing date.">
         {open.length ? (

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { duration } from "@/components/motion/tokens";
 import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 
@@ -50,6 +50,10 @@ export function LiquidIndicator({ containerRef, selector, watch, inset = 0, clas
   const size = useMotionValue(0);
   const start = useMotionValue(0);
   const squash = useMotionValue(1);
+  // Wrapped rows (axis x): the options sit on several lines, so the droplet must be one option tall, not the whole box tall.
+  const [rowMode, setRowMode] = useState(false);
+  const rowTop = useMotionValue(0);
+  const rowH = useMotionValue(0);
   const maxLen = useRef(MAX_LEN);                      // current stretch limit (tightens as the pointer speeds up)
   const lastRetarget = useRef(0);
   const leadingHi = useRef(true);                      // moving toward larger offsets: the `hi` edge leads
@@ -75,8 +79,12 @@ export function LiquidIndicator({ containerRef, selector, watch, inset = 0, clas
         at = axis === "x" ? r.left - b.left : r.top - b.top;
       }
       const len = axis === "x" ? el.offsetWidth : el.offsetHeight;
-      return { l: at, r: at + len };
+      let top = 0;
+      if (axis === "x") { cur = el; while (cur && cur !== box) { top += cur.offsetTop; cur = cur.offsetParent as HTMLElement | null; } }
+      const wrapped = axis === "x" && box.offsetHeight > el.offsetHeight + inset * 2 + 6;
+      return { l: at, r: at + len, top, h: el.offsetHeight, wrapped };
     };
+    const place = (n: NonNullable<ReturnType<typeof slot>>) => { rowTop.set(n.top); rowH.set(n.h); setRowMode(n.wrapped); };
     const sync = () => {
       // Rendered shape = a droplet of clamped length, anchored on the LEADING edge. Fast, repeated retargeting can throw the
       // edges far apart or across each other; clamping keeps it a pill, and anchoring keeps the front of it on the spring's path.
@@ -95,6 +103,7 @@ export function LiquidIndicator({ containerRef, selector, watch, inset = 0, clas
     const s = slot();
     if (!s) return () => { offLo(); offHi(); };
     base.set(s.r - s.l);
+    place(s);
     if (!placed.current || reduce || !wasShown.current) {
       lo.set(s.l); hi.set(s.r); placed.current = true;
     } else {
@@ -116,11 +125,11 @@ export function LiquidIndicator({ containerRef, selector, watch, inset = 0, clas
     sync();
     const ro = new ResizeObserver(() => {
       const n = slot();
-      if (n) { lo.set(n.l); hi.set(n.r); base.set(n.r - n.l); sync(); }
+      if (n) { lo.set(n.l); hi.set(n.r); base.set(n.r - n.l); place(n); sync(); }
     });
     ro.observe(box);
     return () => { offLo(); offHi(); ro.disconnect(); };
-  }, [containerRef, selector, watch, axis, reduce, visible, lo, hi, base, size, start, squash]);
+  }, [containerRef, selector, watch, axis, reduce, visible, inset, lo, hi, base, size, start, squash, rowTop, rowH]);
 
   return (
     <motion.span
@@ -130,7 +139,7 @@ export function LiquidIndicator({ containerRef, selector, watch, inset = 0, clas
       animate={{ opacity: visible ? 1 : 0, scale: lift ? 1.08 : 1 }}
       transition={{ opacity: { duration: duration.interactive }, scale: { type: "spring", stiffness: 420, damping: 14, mass: 0.7 } }}
       data-lift={lift ? "" : undefined}
-      style={axis === "x" ? { left: start, width: size, scaleY: squash, top: inset, bottom: inset } : { top: start, height: size, scaleX: squash, left: inset, right: inset }}
+      style={axis === "x" ? (rowMode ? { left: start, width: size, scaleY: squash, top: rowTop, height: rowH } : { left: start, width: size, scaleY: squash, top: inset, bottom: inset }) : { top: start, height: size, scaleX: squash, left: inset, right: inset }}
     />
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pills } from "@/components/Pills";
 import { AnimatePresence, animate, motion, useMotionValue } from "framer-motion";
 import type { Row } from "@/lib/rows";
@@ -8,7 +8,9 @@ import { dayMonth } from "@/lib/format";
 import { GlassPanel } from "@/components/glass/GlassStatic";
 import { BoardRow } from "@/components/BoardRow";
 import { Select } from "@/components/Select";
+import { BottomSheet, Choice } from "@/components/BottomSheet";
 import { Icon } from "@/components/Icon";
+import { ClosingClock } from "@/components/Breathing";
 import { TONE_TEXT, gmpText, toneOf } from "@/components/Gmp";
 import { duration, ease, spring } from "@/components/motion/tokens";
 
@@ -84,6 +86,17 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   };
   const pickLife = (v: Life) => { beginSwap(); setLife(v); };
   const pickKind = (v: Kind) => { beginSwap(); setKind(v); };
+  const [sheet, setSheet] = useState<null | "filters" | "sort">(null);
+  const closeSheet = useCallback(() => setSheet(null), []);
+  // Phones swap rows without per-row layout animation: dozens of gliding cards is the janky part of a filter change on a phone GPU.
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = matchMedia("(max-width: 639px)");
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   const [limits, setLimits] = useState<Partial<Record<IpoStatus, number>>>({});
   const limitOf = (k: IpoStatus) => limits[k] ?? FIRST;
 
@@ -119,7 +132,7 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   }, [life, kind, hv]);
   const visible = groups.reduce((n, g) => n + g.items.length, 0);
   const rendered = groups.reduce((n, g) => n + Math.min(g.items.length, limits[g.key] ?? FIRST), 0);
-  const glide = rendered <= LAYOUT_ANIM_MAX;
+  const glide = !phone && rendered <= LAYOUT_ANIM_MAX;
 
   const lifeOptions: { value: Life; label: string; count?: number }[] = [
     { value: "all", label: "All", count: rows.length },
@@ -127,6 +140,8 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   ];
   const kindOptions: { value: Kind; label: string }[] = [{ value: "all", label: "All types" }, { value: "MAINBOARD", label: "Mainboard" }, { value: "SME", label: "SME" }];
 
+  const activeFilters = (life !== "all" ? 1 : 0) + (kind !== "all" ? 1 : 0);
+  const sortLabel = SORTS.find((x) => x.value === sort)!.label;
   const pickSort = (v: string) => {
     const s = SORTS.find((x) => x.value === v)!;
     setSort(s.value);
@@ -136,32 +151,44 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   return (
     <div>
       {/* compact overview */}
-      <GlassPanel className="enter grid grid-cols-2 divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x [&>*]:p-5 lg:[&>*]:px-7">
+      <GlassPanel className="enter grid grid-cols-2 divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x [&>*]:p-4 sm:[&>*]:p-5 lg:[&>*]:px-7">
         <Stat dot="bg-gain" label="Live" value={counts.open} />
         <Stat dot="bg-info" label="Upcoming" value={counts.upcoming} />
-        <Stat dot="bg-warn" label="Awaiting listing" value={counts.closed} />
-        <div className="col-span-2 border-t border-line sm:col-span-1 sm:border-t-0 lg:col-span-1">
+        <Stat dot="bg-warn" label="Awaiting listing" value={counts.closed} className="border-t border-line sm:border-t-0" />
+        <div className="border-t border-line sm:col-span-1 sm:border-t-0 lg:col-span-1">
           <div className="t-caption">Best GMP</div>
           {best ? (
-            <div className="mt-2 flex items-baseline gap-2.5">
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 lg:flex-nowrap">
               <span className={`t-metric text-2xl ${TONE_TEXT[toneOf(best.gmp)]}`}>{gmpText(best.gmp!)}</span>
-              <span className="t-small truncate text-faint">{best.name}</span>
+              <span className="t-small min-w-0 text-faint lg:truncate">{best.name}</span>
             </div>
           ) : <div className="mt-2 text-sm text-faint">None reported</div>}
         </div>
         <div className="col-span-2 border-t border-line sm:col-span-2 sm:border-t lg:col-span-1 lg:border-t-0">
-          <div className="t-caption">Closing soon</div>
+          <div className="t-caption flex items-center gap-2">Closing soon <ClosingClock close={closing?.close ?? null} /></div>
           {closing ? (
-            <div className="mt-2 flex items-baseline gap-2.5">
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 lg:flex-nowrap">
               <span className="t-metric num text-2xl">{dayMonth(closing.close)}</span>
-              <span className="t-small truncate text-faint">{closing.name}</span>
+              <span className="t-small min-w-0 text-faint lg:truncate">{closing.name}</span>
             </div>
           ) : <div className="mt-2 text-sm text-faint">No IPO is open</div>}
         </div>
       </GlassPanel>
 
       {/* filters + sort */}
-      <div className="enter relative z-20 mt-8 flex flex-wrap items-center gap-x-4 gap-y-3" style={{ "--i": 1 } as React.CSSProperties}>
+      {/* phone: one tidy row, the choices live in a bottom sheet */}
+      <div className="enter mt-6 flex gap-2 sm:hidden" style={{ "--i": 1 } as React.CSSProperties}>
+        <button type="button" onClick={() => setSheet("filters")} className="btn btn-ghost !min-h-11 flex-1 !justify-between !px-4">
+          <span>Filters{activeFilters > 0 && <span className="num ml-2 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-fg">{activeFilters}</span>}</span>
+          <Icon name="down" size={15} className="text-faint" />
+        </button>
+        <button type="button" onClick={() => setSheet("sort")} className="btn btn-ghost !min-h-11 flex-1 !justify-between !px-4">
+          <span className="min-w-0 truncate"><span className="text-faint">Sort: </span>{sortLabel}</span>
+          <Icon name="down" size={15} className="shrink-0 text-faint" />
+        </button>
+      </div>
+
+      <div className="enter relative z-20 mt-6 hidden flex-wrap items-center gap-x-4 gap-y-3 sm:mt-8 sm:flex" style={{ "--i": 1 } as React.CSSProperties}>
         <Pills label="Life-cycle stage" value={life} onChange={pickLife} options={lifeOptions} />
           {hasSme && hasMain && <Pills label="IPO type" value={kind} onChange={pickKind} options={kindOptions} />}
         <div className="ml-auto flex items-center gap-2">
@@ -178,6 +205,45 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
         </div>
       </div>
       <p className="t-small mt-3 text-faint" aria-live="polite">{visible} of {rows.length} IPOs</p>
+
+      <BottomSheet
+        open={sheet === "filters"} onClose={closeSheet} title="Filters"
+        footer={
+          <div className="flex gap-2">
+            <button type="button" disabled={activeFilters === 0} onClick={() => { beginSwap(); setLife("all"); setKind("all"); }} className="btn btn-ghost !min-h-12 !px-5 disabled:opacity-40">Reset</button>
+            <button type="button" onClick={closeSheet} className="btn btn-primary !min-h-12 flex-1">Show {visible} IPOs</button>
+          </div>
+        }
+      >
+        <div role="radiogroup" aria-label="Life-cycle stage" className="mt-2">
+          <p className="t-caption mb-2">Stage</p>
+          <div className="grid grid-cols-2 gap-2">
+            {lifeOptions.map((o) => (
+              <Choice key={o.value} on={life === o.value} onClick={() => pickLife(o.value)}>
+                <span className="min-w-0">{o.label} <span className="num text-xs font-normal text-faint">{o.count}</span></span>
+              </Choice>
+            ))}
+          </div>
+        </div>
+        {hasSme && hasMain && (
+          <div role="radiogroup" aria-label="IPO type" className="mt-5">
+            <p className="t-caption mb-2">Type</p>
+            <div className="grid grid-cols-3 gap-2">
+              {kindOptions.map((o) => <Choice key={o.value} on={kind === o.value} onClick={() => pickKind(o.value)}>{o.value === "all" ? "All" : o.label}</Choice>)}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
+
+      <BottomSheet open={sheet === "sort"} onClose={closeSheet} title="Sort by" footer={<button type="button" onClick={closeSheet} className="btn btn-primary !min-h-12 w-full">Done</button>}>
+        <div role="radiogroup" aria-label="Sort by" className="mt-2 grid gap-2">
+          {SORTS.map((o) => <Choice key={o.value} on={sort === o.value} onClick={() => pickSort(o.value)}>{o.label}</Choice>)}
+        </div>
+        <div role="radiogroup" aria-label="Order" className={`mt-5 grid grid-cols-2 gap-2 ${sort === "default" ? "pointer-events-none opacity-40" : ""}`}>
+          <Choice on={dir === -1} onClick={() => setDir(-1)}>High to low</Choice>
+          <Choice on={dir === 1} onClick={() => setDir(1)}>Low to high</Choice>
+        </div>
+      </BottomSheet>
 
       {/* grouped rows. A filter change keeps the rows that stay (they glide to their new spot), fades the ones that go and
           brings the new ones in; a sort reorders the same rows by gliding them. */}
@@ -243,7 +309,7 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
             })}
           </AnimatePresence>
           {groups.length === 0 && (
-            <p className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface p-12 text-center text-faint">No IPOs match these filters.</p>
+            <p className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface p-8 text-center text-faint sm:p-12">No IPOs match these filters.</p>
           )}
         </div>
       </motion.div>
@@ -251,8 +317,8 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   );
 }
 
-const Stat = ({ dot, label, value }: { dot: string; label: string; value: number }) => (
-  <div>
+const Stat = ({ dot, label, value, className }: { dot: string; label: string; value: number; className?: string }) => (
+  <div className={className}>
     <div className="t-caption flex items-center gap-2"><Dot cls={dot} />{label}</div>
     <div className="t-metric mt-2 text-3xl">{value}</div>
   </div>

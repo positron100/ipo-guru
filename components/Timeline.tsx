@@ -21,8 +21,8 @@ export function Timeline({ stages }: { stages: readonly Stage[] }) {
   const progress = reached < 0 ? 0 : (reached / (stages.length - 1)) * 100;
 
   return (
-    <GlassPanel className="p-7 sm:p-9 lg:p-12">
-      <ol className="relative grid gap-8 md:grid-cols-6 md:gap-0">
+    <GlassPanel className="p-5 sm:p-9 lg:p-12">
+      <ol className="relative grid gap-6 sm:gap-8 md:grid-cols-6 md:gap-0">
         {/* vertical rail (mobile) */}
         <div className="absolute bottom-3 left-[11px] top-3 w-px bg-line md:hidden" aria-hidden />
         <div className="absolute left-[11px] top-3 w-px bg-accent md:hidden" style={{ height: `calc(${progress}% - 0px)`, transformOrigin: "top" }} aria-hidden />
@@ -49,7 +49,7 @@ export function Timeline({ stages }: { stages: readonly Stage[] }) {
                 {st === "current" && <span className="live-dot text-accent" aria-hidden />}
               </span>
               <div>
-                <div className={`text-base font-semibold ${st === "unknown" ? "text-faint" : ""}`}>{s.label}</div>
+                <div className={`text-[0.9375rem] font-semibold sm:text-base ${st === "unknown" ? "text-faint" : ""}`}>{s.label}</div>
                 <div className={`num t-small mt-1 ${st === "current" ? "font-medium text-accent" : "text-faint"}`}>
                   {dateOnly(s.date) ?? "Not announced"}
                 </div>

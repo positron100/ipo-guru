@@ -1,6 +1,6 @@
 import type { SubModel } from "@/lib/subscription";
 import { fmtX } from "@/lib/subscription";
-import { GlassPanel } from "@/components/glass/GlassStatic";
+import { GlassCard, GlassPanel } from "@/components/glass/GlassStatic";
 import { GlowCard } from "@/components/glass/Glass";
 import { ScrollArea } from "@/components/ScrollHints";
 import { Icon } from "@/components/Icon";
@@ -21,6 +21,8 @@ export function SubscriptionMatrix({ model }: { model: SubModel }) {
   const vars = css({ "--cols": `minmax(7rem,1.1fr) repeat(${n}, minmax(5.75rem,1fr))`, "--n": n, "--minw": `${150 + n * 112}px` });
 
   return (
+    <>
+    <div className="hidden sm:block">
     <GlassPanel className="overflow-hidden">
       <ScrollArea>
         <div role="table" aria-label="Subscription by category and day" className="p-3 sm:min-w-[var(--minw)] lg:p-4" style={vars}>
@@ -28,7 +30,7 @@ export function SubscriptionMatrix({ model }: { model: SubModel }) {
             <span role="columnheader" className="t-caption">Category</span>
             {dayLabels.map((d, i) => (
               <span key={d} role="columnheader" className={`t-caption text-right ${i === n - 1 ? "!text-accent" : ""}`}>
-                {d}{i === n - 1 && n > 1 && <span className="sr-only"> (latest)</span>}
+                {i === n - 1 && n > 1 && <span aria-hidden className="dot-breathe relative mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />}{d}{i === n - 1 && n > 1 && <span className="sr-only"> (latest)</span>}
               </span>
             ))}
           </div>
@@ -55,7 +57,7 @@ export function SubscriptionMatrix({ model }: { model: SubModel }) {
                         aria-hidden
                       />
                     )}
-                    <span className={`num relative z-10 flex h-full items-center justify-end pr-2.5 ${v === null ? "text-faint" : latest ? "font-semibold" : "text-muted"}`}>
+                    <span className={`num relative z-10 flex h-full items-center justify-end pr-2.5 text-sm sm:text-base ${v === null ? "text-faint" : latest ? "font-semibold" : "text-muted"}`}>
                       {v === null ? "—" : fmtX(v)}
                     </span>
                     </span>
@@ -66,11 +68,72 @@ export function SubscriptionMatrix({ model }: { model: SubModel }) {
           ))}
         </div>
       </ScrollArea>
-      <p className="t-small border-t border-line px-6 py-4 text-faint lg:px-8">
+      <p className="t-small border-t border-line px-4 py-3 text-[0.75rem] text-faint sm:px-6 sm:py-4 sm:text-[0.875rem] lg:px-8">
         Bar length uses a square-root scale relative to the largest value shown; the exact multiple is always printed.
         {model.updatedAtLabel && <> Source last updated: {model.updatedAtLabel} IST.</>}
       </p>
     </GlassPanel>
+    </div>
+    <MobileCategories model={model} />
+    </>
+  );
+}
+
+/**
+ * Phones: one card per category showing its progression day by day. The latest value is the headline (top right); below it a
+ * vertical rail joins the days in order, each with a dot, its label and its multiple. The latest day is the filled accent dot
+ * with a soft ring, a stronger figure and a small "Latest" tag; earlier days stay quiet. No bars: the chart above shows the trend,
+ * this shows the exact figures. Desktop keeps the matrix above.
+ */
+function MobileCategories({ model }: { model: SubModel }) {
+  const { dayLabels, categories } = model;
+  const n = dayLabels.length;
+  return (
+    <div className="space-y-3 sm:hidden">
+      {categories.map((c, r) => {
+        const last = c.values[n - 1];
+        return (
+          <GlassCard key={c.key} as="section" aria-label={`${c.label} subscription by day`} className="enter p-4" style={css({ "--i": r })}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h4 className="text-base font-semibold">{c.label}</h4>
+                <p className="t-caption mt-1">{n > 1 ? "Day by day" : "Latest"}</p>
+              </div>
+              <p className="t-metric num shrink-0 text-2xl text-accent">{last === null ? "—" : fmtX(last)}</p>
+            </div>
+            <ol className="mt-4">
+              {c.values.map((v, i) => {
+                const latest = i === n - 1;
+                return (
+                  <li key={dayLabels[i]} className="relative flex items-baseline justify-between gap-4 py-2 pl-6">
+                    {i < n - 1 && (
+                      <>
+                        <span aria-hidden className="absolute left-[4.5px] top-1/2 h-full w-px bg-line-strong" />
+                        <span aria-hidden className="rail-seg" style={css({ "--seg": i })} />
+                      </>
+                    )}
+                    <span
+                      aria-hidden
+                      className={`absolute left-0 top-1/2 z-10 size-2.5 -translate-y-1/2 rounded-full ${latest ? "dot-breathe bg-accent ring-4 ring-[var(--accent-soft)]" : "border-2 border-line-strong bg-bg"}`}
+                    />
+                    <span className={`text-sm ${latest ? "font-semibold text-fg" : "text-faint"}`}>
+                      {dayLabels[i]}{latest && n > 1 && <span className="t-caption ml-2 !text-accent">Latest</span>}
+                    </span>
+                    <span className={`num ${v === null ? "text-faint" : latest ? "text-lg font-semibold text-accent" : "text-base text-muted"}`}>
+                      {v === null ? "—" : fmtX(v)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </GlassCard>
+        );
+      })}
+      <p className="t-small px-1 text-xs text-faint">
+        Exact multiples as published.
+        {model.updatedAtLabel && <> Source last updated: {model.updatedAtLabel} IST.</>}
+      </p>
+    </div>
   );
 }
 
@@ -80,24 +143,24 @@ export function SubscriptionTotal({ model }: { model: SubModel }) {
   if (!t) return null;
   const n = model.dayLabels.length;
   return (
-    <GlowCard tilt={false} className="enter group p-7 shadow-[0_24px_60px_-34px_color-mix(in_oklab,var(--accent)_70%,transparent)] lg:p-10" style={css({ "--i": 2, borderColor: "color-mix(in oklab, var(--accent) 28%, var(--border))" })}>
-      <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-end lg:gap-16">
+    <GlowCard tilt={false} className="enter group p-5 shadow-[0_24px_60px_-34px_color-mix(in_oklab,var(--accent)_70%,transparent)] sm:p-7 lg:p-10" style={css({ "--i": 2, borderColor: "color-mix(in oklab, var(--accent) 28%, var(--border))" })}>
+      <div className="grid gap-5 sm:gap-8 lg:grid-cols-[auto_1fr] lg:items-end lg:gap-16">
         <div>
           <p className="t-caption flex items-center gap-2"><Icon name="pie" size={14} className="ico-pop" />Total</p>
-          <p className="t-body mt-3 max-w-[16rem]">Overall subscription across every category.</p>
+          <p className="t-body mt-2 max-w-[16rem] text-[0.875rem] sm:mt-3 sm:text-[1rem]">Overall subscription across every category.</p>
         </div>
-        <dl className="flex flex-wrap items-end justify-start gap-x-10 gap-y-6 lg:justify-end lg:gap-x-14">
+        <dl className="flex flex-wrap items-end justify-start gap-x-5 gap-y-4 sm:gap-x-10 sm:gap-y-6 lg:justify-end lg:gap-x-14">
           {model.dayLabels.map((d, i) => {
             const v = t.values[i];
             const latest = i === n - 1;
             return (
-              <div key={d} className="min-w-[4.5rem]">
+              <div key={d} className="min-w-[4.25rem]">
                 <dt className="t-caption">{d}</dt>
-                <dd className={`t-metric mt-2 origin-left transition-transform duration-300 ${latest ? "text-5xl text-accent group-hover:scale-[1.06] lg:text-7xl" : "text-3xl text-muted"}`}>
+                <dd className={`t-metric mt-2 origin-left transition-transform duration-300 ${latest ? "text-4xl text-accent group-hover:scale-[1.06] sm:text-5xl lg:text-7xl" : "text-2xl text-muted sm:text-3xl"}`}>
                   {v === null ? <span className="text-xl font-normal text-faint">—</span> : fmtX(v)}
                 </dd>
                 {latest && n > 1 && (
-                  <p className="trend-up t-small mt-2 inline-flex items-center gap-1.5 font-medium text-accent"><Icon name="up" size={14} />latest subscription</p>
+                  <p className="trend-up t-small mt-2 inline-flex max-w-[6.5rem] items-start gap-1.5 text-[0.75rem] font-medium max-sm:leading-snug text-accent sm:max-w-none sm:items-center sm:text-[0.875rem]"><Icon name="up" size={14} />latest subscription</p>
                 )}
               </div>
             );

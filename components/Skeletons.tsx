@@ -5,7 +5,7 @@ const S = ({ className = "" }: { className?: string }) => <div className={`skele
 
 /** Matches IpoCard's footprint so nothing jumps when real cards arrive. */
 export const CardSkeleton = () => (
-  <GlassCard className="flex flex-col gap-6 p-6 lg:p-7">
+  <GlassCard className="flex flex-col gap-5 p-5 sm:gap-6 sm:p-6 lg:p-7">
     <div className="flex justify-between gap-3"><S className="h-5 w-3/5" /><S className="h-6 w-16 !rounded-full" /></div>
     <div className="flex items-end justify-between"><div className="space-y-2"><S className="h-3 w-10" /><S className="h-10 w-32" /></div><S className="h-5 w-16" /></div>
     <div className="grid grid-cols-3 gap-2 border-t border-line pt-4"><S className="h-9" /><S className="h-9" /><S className="h-9" /></div>
@@ -16,7 +16,7 @@ export const CardGridSkeleton = ({ n = 6 }: { n?: number }) => (
   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6 2xl:grid-cols-4">{Array.from({ length: n }, (_, k) => <CardSkeleton key={k} />)}</div>
 );
 
-export const SectionTitleSkeleton = () => <S className="mb-6 mt-16 h-7 w-56 lg:mt-24" />;
+export const SectionTitleSkeleton = () => <S className="mb-6 mt-12 h-7 w-56 sm:mt-16 lg:mt-24" />;
 
 export const TableSkeleton = ({ rows = 6 }: { rows?: number }) => (
   <GlassPanel className="overflow-hidden">
@@ -30,10 +30,11 @@ export const TableSkeleton = ({ rows = 6 }: { rows?: number }) => (
 /** Market board placeholder: summary strip, filter pills, then rows shaped like the real ones. */
 export const BoardSkeleton = ({ rows = 5 }: { rows?: number }) => (
   <div>
-    <div className="skeleton h-24 !rounded-[var(--radius-panel)]" aria-hidden />
-    <div className="mt-8 flex gap-3"><S className="h-12 w-80 !rounded-full" /><S className="h-12 w-56 !rounded-full" /><S className="ml-auto h-11 w-40 !rounded-full" /></div>
-    <div className="mt-10 space-y-3">
-      {Array.from({ length: rows }, (_, k) => <div key={k} className="skeleton h-28 !rounded-[var(--radius-card)]" aria-hidden />)}
+    <div className="skeleton h-[17.5rem] !rounded-[var(--radius-panel)] sm:h-44 lg:h-24" aria-hidden />
+    <div className="mt-6 flex gap-2 sm:hidden"><S className="h-11 flex-1 !rounded-full" /><S className="h-11 flex-1 !rounded-full" /></div>
+    <div className="mt-8 hidden gap-3 sm:flex"><S className="h-12 w-80 !rounded-full" /><S className="h-12 w-56 !rounded-full" /><S className="ml-auto h-11 w-40 !rounded-full" /></div>
+    <div className="mt-8 space-y-3 sm:mt-10">
+      {Array.from({ length: rows }, (_, k) => <div key={k} className="skeleton h-[13.5rem] !rounded-[var(--radius-card)] lg:h-28" aria-hidden />)}
     </div>
   </div>
 );

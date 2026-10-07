@@ -57,22 +57,22 @@ export default async function Page() {
       <WarmIdle hrefs={openHrefs} />
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "IPO GMP today" }]} />
 
-      <header className="mt-6 grid items-end gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
+      <header className="mt-6 grid items-end gap-5 sm:gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
         <div>
           <div className="enter"><Fresh iso={fetchedAt} label="Data updated" className="rounded-full border border-line bg-surface px-3.5 py-2" /></div>
-          <h1 className="t-display enter mt-7" style={css({ "--i": 1 })}>
+          <h1 className="t-display enter mt-5 sm:mt-7" style={css({ "--i": 1 })}>
             IPO GMP{" "}
             <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">today</span>
           </h1>
         </div>
-        <p className="t-body enter max-w-xl text-lg lg:pb-3" style={css({ "--i": 2 })}>
+        <p className="t-body enter line-clamp-3 max-w-xl text-base sm:line-clamp-none sm:text-lg lg:pb-3" style={css({ "--i": 2 })}>
           Grey-market premium is the unofficial extra (or discount) per share at which an IPO trades before listing. Here it is set against
           each IPO&apos;s upper price band. &ldquo;Est. listing price&rdquo; is simply upper band + GMP, and GMP % is GMP ÷ upper band.
           Neither is a forecast.
         </p>
       </header>
 
-      <div className="enter mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6" style={css({ "--i": 3 })}>
+      <div className="enter mt-6 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 lg:grid-cols-4 lg:gap-6" style={css({ "--i": 3 })}>
         <SummaryTile index={3} label={fallback ? "Closed, reporting GMP" : "Reporting GMP"} value={pool.length} sub={fallback ? "no open or upcoming IPO has a GMP" : "open + upcoming IPOs"} />
         <SummaryTile
           index={4}
@@ -84,7 +84,7 @@ export default async function Page() {
         <SummaryTile index={6} label="Highest" value={top ? <span className={TONE_TEXT[toneOf(top.g)]}>{pct(top.g)}</span> : "–"} sub={top?.i.name ?? "no GMP reported"} />
       </div>
 
-      <div className="enter mt-10" style={css({ "--i": 4 })}><Disclaimer /></div>
+      <div className="enter mt-6 sm:mt-10" style={css({ "--i": 4 })}><Disclaimer /></div>
 
       {top ? (
         <Section title={fallback ? "Top recent GMP" : "Top GMP mover"} note="Ranked by estimated gain: GMP ÷ upper band.">

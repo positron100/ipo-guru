@@ -115,10 +115,10 @@ export default async function Page({ params }: Props) {
           Data fetched: <time dateTime={fetchedAt}>{dateTimeIST(fetchedAt)}</time>
           {gmpUpdatedAt && <> · GMP updated: <time dateTime={gmpUpdatedAt}>{dateTimeIST(gmpUpdatedAt)}</time></>}
         </p>
-        <p className="t-body mt-5 max-w-4xl text-lg">{summary(ipo)}</p>
+        <p className="t-body mt-4 max-w-4xl text-base sm:mt-5 sm:text-lg">{summary(ipo)}</p>
       </header>
 
-      <div className="mt-10 grid gap-5 sm:grid-cols-6 lg:mt-14 lg:grid-cols-12 lg:gap-6">
+      <div className="mt-8 grid gap-3 sm:mt-10 sm:gap-5 sm:grid-cols-6 lg:mt-14 lg:grid-cols-12 lg:gap-6">
         <Metric label="Price band" icon="tag" size="lg" value={bandLabel} sub="per share" index={2} className="sm:col-span-6 lg:col-span-5" />
         <Metric label="Lot size" icon="layers" value={ipo.lotSize !== null ? `${ipo.lotSize} shares` : null} sub={d.minInvestment !== null ? `Min. ${rupee(d.minInvestment)}` : null} index={3} className="sm:col-span-3 lg:col-span-3" />
         <Metric label="Issue size" icon="pie" value={crore(ipo.issueSizeCr)} sub={ipo.freshIssueCr !== null ? `Fresh ${crore(ipo.freshIssueCr)}` : null} index={4} className="sm:col-span-3 lg:col-span-4" />
@@ -142,7 +142,7 @@ export default async function Page({ params }: Props) {
       {/* Rendered only when history is populated (Standard plan, not enabled on the Free MVP). */}
       {ipo.history && ipo.history.length > 0 && (
         <Section title="GMP history">
-          <GlassPanel className="space-y-6 p-6 sm:p-8">
+          <GlassPanel className="space-y-5 p-4 sm:space-y-6 sm:p-8">
             <p className="t-small text-faint">Unofficial grey-market readings reported by {ipo.gmp?.source ?? ipo.history[0]?.source ?? "the data provider"}; not exchange data.</p>
             <GmpChart points={ipo.history} />
             <details className="group border-t border-line pt-4">
@@ -164,7 +164,7 @@ export default async function Page({ params }: Props) {
       )}
 
       <Section title="Issue details">
-        <div className="@container"><div className="grid grid-cols-2 gap-4 @xl:grid-cols-3 @4xl:grid-cols-4">
+        <div className="@container"><div className="grid grid-cols-2 gap-3 sm:gap-4 @xl:grid-cols-3 @4xl:grid-cols-4">
           <Metric size="sm" label="Upper price band" value={rupee(ipo.priceBand.max)} />
           <Metric size="sm" label="Lower price band" value={rupee(ipo.priceBand.min)} />
           <Metric size="sm" label="Fresh issue" value={crore(ipo.freshIssueCr)} />
@@ -187,8 +187,8 @@ export default async function Page({ params }: Props) {
         {ipo.subscription && buildSubscription(ipo.subscription) ? (
           <SubscriptionSection data={ipo.subscription} />
         ) : ipo.subscriptionTotalX !== null ? (
-          <GlassPanel className="flex items-baseline gap-3 p-6">
-            <span className="t-metric text-3xl">{times(ipo.subscriptionTotalX)}</span>
+          <GlassPanel className="flex items-baseline gap-3 p-4 sm:p-6">
+            <span className="t-metric text-2xl sm:text-3xl">{times(ipo.subscriptionTotalX)}</span>
             <span className="t-body">overall subscription. A category-wise breakdown is not available.</span>
           </GlassPanel>
         ) : (
@@ -199,12 +199,12 @@ export default async function Page({ params }: Props) {
       {ipo.status === "listed" && (
         <Section title="Listing outcome">
           {ipo.listing.listingPrice !== null ? (
-            <GlassPanel className="grid gap-6 p-6 sm:grid-cols-3">
+            <GlassPanel className="grid gap-4 p-5 sm:grid-cols-3 sm:gap-6 sm:p-6">
               <Out label="Issue price" value={rupee(ipo.listing.issuePrice ?? ipo.priceBand.max)} />
               <Out label="Listing price" value={rupee(ipo.listing.listingPrice)} />
               <div>
                 <div className="t-caption">Listing gain</div>
-                <div className="mt-2"><PctPill value={ipo.listing.gainPct} className="!px-3 !py-1.5 !text-lg" />{ipo.listing.gainPct === null && <span className="text-faint">Not available</span>}</div>
+                <div className="mt-2"><PctPill value={ipo.listing.gainPct} still className="!px-3 !py-1.5 !text-lg" />{ipo.listing.gainPct === null && <span className="text-faint">Not available</span>}</div>
               </div>
             </GlassPanel>
           ) : <Empty>The listing price has not been reported for this IPO.</Empty>}
@@ -213,14 +213,14 @@ export default async function Page({ params }: Props) {
 
       {faq.length > 0 && (
         <Section title="Quick answers">
-          <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+          <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-4">
             {faq.map((f) => (
               <details key={f.q} className="glass glass-card group transition-colors open:bg-[var(--surface-hover)]">
-                <summary className="group flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 text-base font-medium [&::-webkit-details-marker]:hidden">
+                <summary className="group flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[0.9375rem] font-medium sm:px-6 sm:py-5 sm:text-base [&::-webkit-details-marker]:hidden">
                   {f.q}
                   <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-line text-muted transition-transform duration-300 group-hover:scale-110 group-open:rotate-45">+</span>
                 </summary>
-                <p className="t-body px-6 pb-5">{f.a}</p>
+                <p className="t-body px-4 pb-4 text-[0.875rem] sm:px-6 sm:pb-5 sm:text-[1rem]">{f.a}</p>
               </details>
             ))}
           </div>
@@ -233,6 +233,6 @@ export default async function Page({ params }: Props) {
 const Out = ({ label, value }: { label: string; value: string | null }) => (
   <div>
     <div className="t-caption">{label}</div>
-    <div className="t-metric mt-2 text-3xl">{value ?? <span className="text-base font-normal text-faint">Not available</span>}</div>
+    <div className="t-metric mt-2 text-2xl sm:text-3xl">{value ?? <span className="text-base font-normal text-faint">Not available</span>}</div>
   </div>
 );

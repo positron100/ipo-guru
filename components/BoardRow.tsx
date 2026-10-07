@@ -10,6 +10,7 @@ import type { Tone } from "@/components/Gmp";
 import { StatusBadge } from "@/components/ui";
 import { WarmLink } from "@/components/nav/Prefetch";
 import { Icon } from "@/components/Icon";
+import { BreathingArrow, ClosingClock } from "@/components/Breathing";
 import { duration, ease, spring } from "@/components/motion/tokens";
 
 const LEAD = { gain: "up", loss: "down", flat: "flat", none: "flat" } as const;
@@ -40,15 +41,15 @@ export function BoardRow({ r }: { r: Row }) {
         {/* identity */}
         <div className="flex min-w-0 items-center gap-4">
           <span className={`${TREND[t]} grid size-11 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-105 ${LEAD_BG[t]}`}>
-            <Icon name={LEAD[t]} size={18} />
+            <BreathingArrow dir={LEAD[t]} size={18} still={stale || t === "none"} />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 pr-8 lg:pr-0">
             <h4 className="text-lg font-semibold leading-snug tracking-tight">
-              <span className="block truncate transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent">{r.name}</span>
+              <span className="block transition-colors lg:truncate duration-200 group-hover:text-accent group-focus-visible:text-accent">{r.name}</span>
             </h4>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               {board && <span className="t-caption">{board}</span>}
-              <span className="lg:hidden"><StatusBadge status={status} /></span>
+              <span className="flex items-center gap-1.5 lg:hidden"><StatusBadge status={status} />{status === "open" && <ClosingClock close={r.close} />}</span>
               <span className="num t-small hidden text-faint lg:inline">{rupee(r.priceMax) ? `${rupee(r.priceMax)} upper band` : "Band not announced"}</span>
             </div>
           </div>
@@ -61,17 +62,24 @@ export function BoardRow({ r }: { r: Row }) {
             {r.gmp === null ? (
               <div className="mt-1.5 flex min-h-[2.6rem] items-center text-sm text-faint">{missingGmp(status)}</div>
             ) : (
-              <div className={`t-metric mt-1.5 origin-left text-4xl transition-transform duration-300 group-hover:scale-[1.05] lg:text-[2.6rem] ${TONE_TEXT[t]}`}>{gmpText(r.gmp)}</div>
+              <div className={`t-metric mt-1.5 origin-left text-3xl sm:text-4xl transition-transform duration-300 group-hover:scale-[1.05] lg:text-[2.6rem] ${TONE_TEXT[t]}`}>{gmpText(r.gmp)}</div>
             )}
           </div>
           <div className="text-right lg:text-left">
             <Label>Expected gain</Label>
             <div className="mt-1.5 flex min-h-[2.6rem] items-center lg:justify-start">
-              {r.gmpPct !== null ? <PctPill value={r.gmpPct} className="!px-3 !py-1.5 !text-sm" /> : <span className="text-sm text-faint">–</span>}
+              {r.gmpPct !== null ? <PctPill value={r.gmpPct} still={stale} className="!px-3 !py-1.5 !text-sm" /> : <span className="text-sm text-faint">–</span>}
               {r.mismatch && <abbr title="The data provider's own GMP percentage disagrees with this figure" className="ml-1 text-faint no-underline">*</abbr>}
             </div>
           </div>
         </div>
+
+        {/* phone: the facts people scan first, so they do not need the expander */}
+        <dl className="num grid grid-cols-3 gap-x-3 border-t border-line pt-4 text-[0.9375rem] lg:hidden">
+          <MiniFact label="Est. listing" value={rupee(r.estPrice)} />
+          <MiniFact label="Upper band" value={rupee(r.priceMax)} />
+          <MiniFact label={status === "upcoming" ? "Opens" : "Closes"} value={dayMonth(status === "upcoming" ? r.open : r.close)} />
+        </dl>
 
         {/* expected listing (desktop) */}
         <div className="hidden lg:block">
@@ -83,7 +91,7 @@ export function BoardRow({ r }: { r: Row }) {
         <div className="hidden space-y-1.5 lg:block">
           <StatusBadge status={status} short />
           <div className="num t-small text-muted">
-            {r.close ? <>Closes {dayMonth(r.close)}</> : "Close date TBA"}
+            {r.close ? <>Closes {dayMonth(r.close)}</> : "Close date TBA"}{status === "open" && <span className="ml-1.5 align-middle"><ClosingClock close={r.close} /></span>}
             {r.listing && <> · Lists {dayMonth(r.listing)}</>}
           </div>
         </div>
@@ -144,3 +152,10 @@ const Fact = ({ label, value, className = "" }: { label: string; value: string |
       <dd className="num mt-1.5 font-medium">{value}</dd>
     </div>
   );
+
+const MiniFact = ({ label, value }: { label: string; value: string | null }) => (
+  <div className="min-w-0">
+    <dt className="t-caption">{label}</dt>
+    <dd className="mt-1 font-medium">{value ?? <span className="font-normal text-faint">–</span>}</dd>
+  </div>
+);
