@@ -383,7 +383,8 @@ button, summary, [role="radio"], [role="option"], [role="combobox"] { -webkit-ta
 .page-enter { animation: page-in var(--dur-transition) var(--ease-out) both; }
 
 /* Staggered entrance: set `--i` per element (index). Used on blocks, never on text nodes. */
-.enter { animation: enter var(--dur-reveal) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+/* backwards, not both: once finished the element has no running animation, so it is not a backdrop root and floating menus inside it can blur the page behind them. */
+.enter { animation: enter var(--dur-reveal) var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
 /* Contents of a card settle just after the card itself (name, then GMP, then facts). */
 .kid { animation: kid-in var(--dur-reveal) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms + var(--c, 0) * 70ms + 140ms); }
 
@@ -474,6 +475,9 @@ html[data-theme-transition="to-light"]::view-transition-new(root) { z-index: 1; 
 }
 .attn:hover { border-color: var(--accent); }
 .attn:active { scale: 0.92; }
+/* Close buttons: same orbit + trailing glow in red (as on the portfolio's close buttons). */
+.attn--red { --accent: #ef4444; }
+[data-theme="dark"] .attn--red { --accent: #f87171; }
 @keyframes attn-orbit { to { --attn-a: 360deg; } }
 @keyframes attn-breathe { 0%, 100% { --attn-k: 0.6; } 50% { --attn-k: 1; } }
 
@@ -757,9 +761,9 @@ body:has([data-no-footer]) footer { display: none; }
 
 /* Touch / small screens: static glass cards drop their backdrop blur. Dozens of overlapping backdrop-filter layers are the single
    most expensive thing on a phone GPU, and over this page's flat background the blur is barely visible. The navbar and the open
-   menu (which really do pass over content) keep theirs. */
+   menu and floating dropdowns (`.glass-float`, which really do pass over content) keep theirs. */
 @media (hover: none), (max-width: 640px) {
-  .glass:not(.nav-glass):not(#mobile-menu) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .glass:not(.nav-glass):not(.glass-float):not(#mobile-menu) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
 /* Touch: every control gets a >=44px hit area by growing an invisible ::after, so the visible layout is untouched and desktop (fine pointer)
@@ -830,3 +834,7 @@ body:has([data-no-footer]) footer { display: none; }
   .drift-up, .drift-down, .drift-flat, .breathe-card, .cta-arrow, .chart-latest-ring, .rail-seg::after, .dot-breathe::after, .clock-pulse::after { animation: none !important; }
   .rail-seg, .clock-pulse::after { display: none; }
 }
+
+/* Filter / sort transitions outrank idle breathing: the list's idle loops hold still while rows move, then resume (MarketBoard sets data-moving). */
+[data-moving="true"] :is(.drift-up, .drift-down, .drift-flat, .breathe-card, .cta-arrow) { animation-play-state: paused; }
+[data-moving="true"] :is(.dot-breathe, .clock-pulse, .rail-seg)::after { animation-play-state: paused; }

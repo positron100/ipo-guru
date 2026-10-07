@@ -1,6 +1,7 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pills } from "@/components/Pills";
+import { ExpandPill } from "@/components/ExpandPill";
 import { AnimatePresence, animate, motion, useMotionValue } from "framer-motion";
 import type { Row } from "@/lib/rows";
 import type { IpoStatus } from "@/lib/types";
@@ -8,8 +9,8 @@ import { dayMonth } from "@/lib/format";
 import { GlassPanel } from "@/components/glass/GlassStatic";
 import { BoardRow } from "@/components/BoardRow";
 import { Select } from "@/components/Select";
-import { BottomSheet, Choice } from "@/components/BottomSheet";
 import { Icon } from "@/components/Icon";
+import { LiveCount } from "@/components/LiveCount";
 import { ClosingClock } from "@/components/Breathing";
 import { TONE_TEXT, gmpText, toneOf } from "@/components/Gmp";
 import { duration, ease, spring } from "@/components/motion/tokens";
@@ -34,6 +35,7 @@ const SORTS: { value: SortKey; label: string; dir: 1 | -1 }[] = [
 const FIRST = 8;                // rows mounted per group at first; a long tail (204 closed IPOs) is revealed in steps so a filter change never mounts hundreds of rows at once
 const MORE = 24;                // rows added per "show more"
 const LAYOUT_ANIM_MAX = 40;     // glide rows only while the visible list is small enough to stay smooth
+const SETTLE_MS = 700;          // idle (breathing) motion on the list pauses this long after a filter / sort change
 
 const ts = (v: string | null) => (v ? Date.parse(v) : null);
 
@@ -61,6 +63,18 @@ function sortRows(rows: Row[], key: SortKey, dir: 1 | -1, status: IpoStatus): Ro
   });
 }
 
+const DirButton = ({ sort, dir, onClick }: { sort: SortKey; dir: 1 | -1; onClick: () => void }) => (
+  <button
+    type="button"
+    disabled={sort === "default"}
+    aria-label={dir === 1 ? "Ascending, switch to descending" : "Descending, switch to ascending"}
+    onClick={onClick}
+    className="btn btn-ghost !size-[42px] !p-0 sm:!size-11 disabled:pointer-events-none disabled:opacity-40"
+  >
+    <Icon name="down" size={16} className={`transition-transform duration-300 ${dir === 1 ? "rotate-180" : ""}`} />
+  </button>
+);
+
 const Dot = ({ cls }: { cls: string }) => <span className={`inline-block size-2 rounded-full ${cls}`} aria-hidden />;
 
 /**
@@ -79,24 +93,21 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   const [measured, setMeasured] = useState(false);
   const swapping = useRef(false);
   const swapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [moving, setMoving] = useState(false);
+  const movingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const markMoving = () => {
+    setMoving(true);
+    clearTimeout(movingTimer.current);
+    movingTimer.current = setTimeout(() => setMoving(false), SETTLE_MS);
+  };
   const beginSwap = () => {
+    markMoving();
     swapping.current = true;
     clearTimeout(swapTimer.current);
     swapTimer.current = setTimeout(() => { swapping.current = false; if (inner.current) hv.set(inner.current.offsetHeight); }, 800);
   };
   const pickLife = (v: Life) => { beginSwap(); setLife(v); };
   const pickKind = (v: Kind) => { beginSwap(); setKind(v); };
-  const [sheet, setSheet] = useState<null | "filters" | "sort">(null);
-  const closeSheet = useCallback(() => setSheet(null), []);
-  // Phones swap rows without per-row layout animation: dozens of gliding cards is the janky part of a filter change on a phone GPU.
-  const [phone, setPhone] = useState(false);
-  useEffect(() => {
-    const mq = matchMedia("(max-width: 639px)");
-    const on = () => setPhone(mq.matches);
-    on();
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
   const [limits, setLimits] = useState<Partial<Record<IpoStatus, number>>>({});
   const limitOf = (k: IpoStatus) => limits[k] ?? FIRST;
 
@@ -132,24 +143,29 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
   }, [life, kind, hv]);
   const visible = groups.reduce((n, g) => n + g.items.length, 0);
   const rendered = groups.reduce((n, g) => n + Math.min(g.items.length, limits[g.key] ?? FIRST), 0);
-  const glide = !phone && rendered <= LAYOUT_ANIM_MAX;
+  const glide = rendered <= LAYOUT_ANIM_MAX;   // rows per group are capped (FIRST/MORE), so this holds on phones too
 
   const lifeOptions: { value: Life; label: string; count?: number }[] = [
     { value: "all", label: "All", count: rows.length },
     ...GROUPS.filter((g) => counts[g.key] > 0).map((g) => ({ value: g.key as Life, label: g.key === "open" ? "Live" : g.title, count: counts[g.key] })),
   ];
+  // Phone stage dropdown: same options, with the group dots and short closed-state labels ("Awaiting 12").
+  const stageSelect = [
+    { value: "all", label: "All", count: rows.length },
+    ...GROUPS.filter((g) => counts[g.key] > 0).map((g) => ({ value: g.key, label: g.title === "Live / open" ? "Live" : g.title, short: g.key === "closed" ? "Awaiting" : g.key === "open" ? "Live" : g.title, count: counts[g.key], dot: g.dot })),
+  ];
   const kindOptions: { value: Kind; label: string }[] = [{ value: "all", label: "All types" }, { value: "MAINBOARD", label: "Mainboard" }, { value: "SME", label: "SME" }];
 
-  const activeFilters = (life !== "all" ? 1 : 0) + (kind !== "all" ? 1 : 0);
-  const sortLabel = SORTS.find((x) => x.value === sort)!.label;
+  const toggleDir = () => { markMoving(); setDir((d) => (d === 1 ? -1 : 1)); };
   const pickSort = (v: string) => {
     const s = SORTS.find((x) => x.value === v)!;
+    markMoving();
     setSort(s.value);
     setDir(s.dir);
   };
 
   return (
-    <div>
+    <div data-moving={moving}>
       {/* compact overview */}
       <GlassPanel className="enter grid grid-cols-2 divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x [&>*]:p-4 sm:[&>*]:p-5 lg:[&>*]:px-7">
         <Stat dot="bg-gain" label="Live" value={counts.open} />
@@ -175,75 +191,29 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
         </div>
       </GlassPanel>
 
-      {/* filters + sort */}
-      {/* phone: one tidy row, the choices live in a bottom sheet */}
-      <div className="enter mt-6 flex gap-2 sm:hidden" style={{ "--i": 1 } as React.CSSProperties}>
-        <button type="button" onClick={() => setSheet("filters")} className="btn btn-ghost !min-h-11 flex-1 !justify-between !px-4">
-          <span>Filters{activeFilters > 0 && <span className="num ml-2 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-fg">{activeFilters}</span>}</span>
-          <Icon name="down" size={15} className="text-faint" />
-        </button>
-        <button type="button" onClick={() => setSheet("sort")} className="btn btn-ghost !min-h-11 flex-1 !justify-between !px-4">
-          <span className="min-w-0 truncate"><span className="text-faint">Sort: </span>{sortLabel}</span>
-          <Icon name="down" size={15} className="shrink-0 text-faint" />
-        </button>
-      </div>
-
-      <div className="enter relative z-20 mt-6 hidden flex-wrap items-center gap-x-4 gap-y-3 sm:mt-8 sm:flex" style={{ "--i": 1 } as React.CSSProperties}>
-        <Pills label="Life-cycle stage" value={life} onChange={pickLife} options={lifeOptions} />
-          {hasSme && hasMain && <Pills label="IPO type" value={kind} onChange={pickKind} options={kindOptions} />}
-        <div className="ml-auto flex items-center gap-2">
-          <Select label="Sort" value={sort} onChange={pickSort} options={SORTS.map((s) => ({ value: s.value, label: s.label }))} />
-          <button
-            type="button"
-            disabled={sort === "default"}
-            aria-label={dir === 1 ? "Ascending, switch to descending" : "Descending, switch to ascending"}
-            onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
-            className="btn btn-ghost !size-11 !p-0 disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Icon name="down" size={16} className={`transition-transform duration-300 ${dir === 1 ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-      </div>
-      <p className="t-small mt-3 text-faint" aria-live="polite">{visible} of {rows.length} IPOs</p>
-
-      <BottomSheet
-        open={sheet === "filters"} onClose={closeSheet} title="Filters"
-        footer={
-          <div className="flex gap-2">
-            <button type="button" disabled={activeFilters === 0} onClick={() => { beginSwap(); setLife("all"); setKind("all"); }} className="btn btn-ghost !min-h-12 !px-5 disabled:opacity-40">Reset</button>
-            <button type="button" onClick={closeSheet} className="btn btn-primary !min-h-12 flex-1">Show {visible} IPOs</button>
-          </div>
-        }
-      >
-        <div role="radiogroup" aria-label="Life-cycle stage" className="mt-2">
-          <p className="t-caption mb-2">Stage</p>
-          <div className="grid grid-cols-2 gap-2">
-            {lifeOptions.map((o) => (
-              <Choice key={o.value} on={life === o.value} onClick={() => pickLife(o.value)}>
-                <span className="min-w-0">{o.label} <span className="num text-xs font-normal text-faint">{o.count}</span></span>
-              </Choice>
-            ))}
+      {/* filters + sort. One control set for every width: on a phone the stage and type controls are two compact sideways rails
+          (Pills `rail`), and sort sits beside the result count; from sm: up it is the original single toolbar. */}
+      <div className="enter relative z-20 mt-6 flex flex-col gap-2 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-3" style={{ "--i": 1 } as React.CSSProperties}>
+        <div className="flex items-center justify-between gap-2 sm:hidden">
+          <Select label="Stage" compact value={life} onChange={(v) => pickLife(v as Life)} options={stageSelect} />
+          <div className="flex items-center gap-1.5">
+            <Select label="Sort" compact align="right" value={sort} onChange={pickSort} options={SORTS.map((s) => ({ value: s.value, label: s.label }))} />
+            <DirButton sort={sort} dir={dir} onClick={toggleDir} />
           </div>
         </div>
+        <div className="hidden sm:block"><Pills label="Life-cycle stage" value={life} onChange={pickLife} options={lifeOptions} /></div>
         {hasSme && hasMain && (
-          <div role="radiogroup" aria-label="IPO type" className="mt-5">
-            <p className="t-caption mb-2">Type</p>
-            <div className="grid grid-cols-3 gap-2">
-              {kindOptions.map((o) => <Choice key={o.value} on={kind === o.value} onClick={() => pickKind(o.value)}>{o.value === "all" ? "All" : o.label}</Choice>)}
-            </div>
-          </div>
+          <>
+            <div className="sm:hidden"><ExpandPill label="IPO type" value={kind} onChange={pickKind} options={kindOptions} /></div>
+            <div className="hidden sm:block"><Pills label="IPO type" value={kind} onChange={pickKind} options={kindOptions} /></div>
+          </>
         )}
-      </BottomSheet>
-
-      <BottomSheet open={sheet === "sort"} onClose={closeSheet} title="Sort by" footer={<button type="button" onClick={closeSheet} className="btn btn-primary !min-h-12 w-full">Done</button>}>
-        <div role="radiogroup" aria-label="Sort by" className="mt-2 grid gap-2">
-          {SORTS.map((o) => <Choice key={o.value} on={sort === o.value} onClick={() => pickSort(o.value)}>{o.label}</Choice>)}
+        <div className="ml-auto hidden items-center gap-2 sm:flex">
+          <Select label="Sort" value={sort} onChange={pickSort} options={SORTS.map((s) => ({ value: s.value, label: s.label }))} />
+          <DirButton sort={sort} dir={dir} onClick={toggleDir} />
         </div>
-        <div role="radiogroup" aria-label="Order" className={`mt-5 grid grid-cols-2 gap-2 ${sort === "default" ? "pointer-events-none opacity-40" : ""}`}>
-          <Choice on={dir === -1} onClick={() => setDir(-1)}>High to low</Choice>
-          <Choice on={dir === 1} onClick={() => setDir(1)}>Low to high</Choice>
-        </div>
-      </BottomSheet>
+      </div>
+      <p className="t-small mt-3 whitespace-nowrap text-faint" aria-live="polite" aria-atomic><LiveCount value={visible} /> of {rows.length} IPOs</p>
 
       {/* grouped rows. A filter change keeps the rows that stay (they glide to their new spot), fades the ones that go and
           brings the new ones in; a sort reorders the same rows by gliding them. */}
@@ -257,9 +227,9 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
                 <motion.section
                   key={g.key}
                   layout={glide ? "position" : false}
-                  initial={glide ? { opacity: 0 } : false}
-                  animate={{ opacity: 1, transition: { duration: duration.transition, ease: ease.out } }}
-                  exit={glide ? { opacity: 0, transition: { duration: duration.interactive } } : undefined}
+                  initial={glide ? { opacity: 0, y: -6 } : false}
+                  animate={{ opacity: 1, y: 0, transition: { duration: duration.transition, ease: ease.out } }}
+                  exit={glide ? { opacity: 0, y: -6, pointerEvents: "none", transition: { duration: duration.interactive, ease: ease.exit } } : undefined}
                   transition={{ layout: spring.flow }}
                   aria-labelledby={`grp-${g.key}`}
                 >
@@ -267,7 +237,7 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
                     <h3 id={`grp-${g.key}`} className="t-h3 flex items-center gap-3 text-lg">
                       <Dot cls={g.dot} />
                       {g.title}
-                      <span className="num rounded-full bg-line px-2.5 py-0.5 text-xs font-semibold text-muted">{g.items.length}</span>
+                      <span className="num rounded-full bg-line px-2.5 py-0.5 text-xs font-semibold text-muted"><LiveCount value={g.items.length} /></span>
                     </h3>
                     <span className="t-small hidden text-faint sm:inline">{g.note}</span>
                     <span className="h-px min-w-8 flex-1 bg-line" aria-hidden />
@@ -280,9 +250,9 @@ export function MarketBoard({ rows }: { rows: Row[] }) {
                           <motion.li
                             key={r.slug}
                             layout={glide}
-                            initial={glide ? { opacity: 0, y: 10 } : false}
-                            animate={{ opacity: 1, y: 0, transition: { duration: duration.transition, ease: ease.out } }}
-                            exit={glide ? { opacity: 0, transition: { duration: duration.micro } } : undefined}
+                            initial={glide ? { opacity: 0, y: 8, scale: 0.985 } : false}
+                            animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: duration.transition, ease: ease.out } }}
+                            exit={glide ? { opacity: 0, y: -6, pointerEvents: "none", scale: 0.98, transition: { duration: duration.interactive, ease: ease.exit } } : undefined}
                             transition={{ layout: spring.flow }}
                           >
                             <BoardRow r={r} />
