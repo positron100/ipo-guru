@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const t = (v: string | null) => (v ? Date.parse(v) : Infinity);
 
 export default async function Page() {
-  const { ipos, fetchedAt } = await getAllIpos();
+  const { ipos, fetchedAt, available } = await getAllIpos();
   const up = ipos.filter((i) => i.status === "upcoming").sort((a, b) => t(a.dates.open) - t(b.dates.open));
   const detailed = up.filter((i) => !isThin(i));
   const pending = up.filter(isThin);
@@ -32,7 +32,7 @@ export default async function Page() {
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Upcoming IPOs" }]} />
       <PageHeader title="Upcoming IPOs in India">
         IPOs that have been announced but have not opened for subscription yet. Dates and price bands appear once the company or
-        exchange publishes them. Data fetched {dateTimeIST(fetchedAt)}.
+        exchange publishes them.{available ? ` Data fetched ${dateTimeIST(fetchedAt)}.` : " Data is temporarily unavailable; please try again shortly."}
       </PageHeader>
       <div className="enter mt-6" style={{ "--i": 1 } as React.CSSProperties}><Disclaimer /></div>
       <Section title="With announced details">

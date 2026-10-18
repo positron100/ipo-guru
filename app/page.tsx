@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const t = (v: string | null) => (v ? Date.parse(v) : Infinity);
 
 export default async function Home() {
-  const { ipos, fetchedAt } = await getAllIpos();
+  const { ipos, fetchedAt, available } = await getAllIpos();
   const open = ipos.filter((i) => i.status === "open").sort((a, b) => t(a.dates.close) - t(b.dates.close));
   const upcomingAll = ipos.filter((i) => i.status === "upcoming");
   const upcoming = upcomingAll.filter((i) => !isThin(i)).sort((a, b) => t(a.dates.open) - t(b.dates.open)).slice(0, 6);
@@ -46,7 +46,7 @@ export default async function Home() {
       <section className="grid items-stretch gap-8 sm:gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 xl:gap-20">
         <div className="flex flex-col justify-center">
           <div className="enter t-small inline-flex w-fit items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-muted">
-            <span className="live-dot text-gain" aria-hidden /> Data fetched {dateTimeIST(fetchedAt)}
+            {available ? <><span className="live-dot text-gain" aria-hidden /> Data fetched {dateTimeIST(fetchedAt)}</> : "Data temporarily unavailable"}
           </div>
           <h1 className="t-display enter mt-6 sm:mt-8" style={{ "--i": 1 } as React.CSSProperties}>
             <Typewriter

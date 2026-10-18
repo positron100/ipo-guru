@@ -3,7 +3,12 @@ import { resolveStatus, istToday } from "./ipoguru-normalize.ts";
 import type { IpoDataProvider } from "./providers/types.ts";
 import { validateIpo } from "./providers/validate.ts";
 
-export interface IpoList { ipos: Ipo[]; fetchedAt: string }
+export interface IpoList {
+  ipos: Ipo[];
+  fetchedAt: string;
+  /** False when the shared upstream listing was temporarily unavailable. */
+  available: boolean;
+}
 
 interface Logger {
   warn(msg: string, ...rest: unknown[]): void;
@@ -65,7 +70,7 @@ export class IpoService {
         this.log.warn(`[ipo] skipping ${raw.slug}:`, e instanceof Error ? e.message : e);
       }
     }
-    return { ipos: [...bySlug.values()], fetchedAt };
+    return { ipos: [...bySlug.values()], fetchedAt, available: true };
   }
 
   async get(slug: string): Promise<{ ipo: Ipo; fetchedAt: string } | null> {

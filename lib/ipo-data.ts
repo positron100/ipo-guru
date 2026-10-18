@@ -38,6 +38,18 @@ export function getSource(): { name: string; url: string; enriched: boolean } {
   }
 }
 
-export const getAllIpos = cache((): Promise<IpoList> => getService().list());
+/**
+ * Collection pages can still render useful, explicit empty states while an external
+ * provider is down. Detail routes keep their stricter behavior so an unknown IPO
+ * is not mistaken for a valid page.
+ */
+export const getAllIpos = cache(async (): Promise<IpoList> => {
+  try {
+    return await getService().list();
+  } catch (error) {
+    console.error("[ipo] collection data is temporarily unavailable:", error);
+    return { ipos: [], fetchedAt: new Date().toISOString(), available: false };
+  }
+});
 export const getIpo = cache((slug: string): Promise<{ ipo: Ipo; fetchedAt: string } | null> => getService().get(slug));
 export const getIpoDetail = cache((slug: string): Promise<{ ipo: Ipo; fetchedAt: string } | null> => getService().getDetail(slug));
