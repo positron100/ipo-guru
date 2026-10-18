@@ -29,7 +29,17 @@ const ORDER = { open: 0, upcoming: 1, closed: 2, listed: 3 } as const;
 const css = (o: Record<string, string | number>) => o as React.CSSProperties;
 
 export default async function Page() {
-  const { ipos, fetchedAt } = await getAllIpos();
+  // IPO Watch is an external, best-effort source. Its temporary outage must not
+  // make this otherwise static route fail to export; render an honest empty state
+  // and allow the next revalidation to populate it again.
+  let data: Awaited<ReturnType<typeof getAllIpos>> | null = null;
+  try {
+    data = await getAllIpos();
+  } catch (error) {
+    console.error("[ipo-gmp-today] IPO data is temporarily unavailable:", error);
+  }
+  const ipos = data?.ipos ?? [];
+  const fetchedAt = data?.fetchedAt;
   const rows = [...ipos]
     .sort((a, b) => ORDER[a.status] - ORDER[b.status] || t(b.dates.close) - t(a.dates.close))
     .map(toRow);
@@ -59,7 +69,13 @@ export default async function Page() {
 
       <header className="mt-6 grid items-end gap-5 sm:gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
         <div>
-          <div className="enter"><Fresh iso={fetchedAt} label="Data updated" className="rounded-full border border-line bg-surface px-3.5 py-2" /></div>
+          <div className="enter">
+            {fetchedAt ? (
+              <Fresh iso={fetchedAt} label="Data updated" className="rounded-full border border-line bg-surface px-3.5 py-2" />
+            ) : (
+              <span className="t-small inline-flex rounded-full border border-line bg-surface px-3.5 py-2 text-muted">Data temporarily unavailable</span>
+            )}
+          </div>
           <h1 className="t-display enter mt-5 sm:mt-7" style={css({ "--i": 1 })}>
             IPO GMP{" "}
             <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">today</span>
@@ -103,7 +119,7 @@ export default async function Page() {
       )}
 
       <Section title="All tracked IPOs" note="Every IPO we track, grouped by where it is in its life cycle.">
-        <MarketBoard rows={rows} />
+        {data ? <MarketBoard rows={rows} /> : <Empty>IPO data is temporarily unavailable. Please try again shortly.</Empty>}
       </Section>
     </>
   );
