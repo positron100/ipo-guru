@@ -9,7 +9,9 @@ import { siteUrl } from "@/lib/site";
 import { dateTimeIST } from "@/lib/format";
 import { WarmIdle } from "@/components/nav/Prefetch";
 
-export const revalidate = 14400;
+// Keep provider data cached, while avoiding static-build fan-out against the
+// provider's one-request-per-minute free-plan limit.
+export const revalidate = 0;
 export const metadata: Metadata = {
   title: "Upcoming IPOs in India: Dates, Price Band and Status",
   description:

@@ -15,7 +15,9 @@ import { deriveIpo } from "@/lib/gmp";
 import { TONE_TEXT, toneOf } from "@/components/Gmp";
 import type { Ipo } from "@/lib/types";
 
-export const revalidate = 14400;
+// The provider fetch has its own persistent revalidation policy. Rendering this
+// route on demand avoids concurrent static-build requests exhausting free-plan rate limits.
+export const revalidate = 0;
 export const metadata: Metadata = {
   title: "IPO GMP Today: Grey Market Premium for Open & Upcoming IPOs",
   description:

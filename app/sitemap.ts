@@ -3,7 +3,9 @@ import { getAllIpos } from "@/lib/ipo-data";
 import { isThin } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
-export const revalidate = 14400;
+// Do not request the rate-limited provider during static builds. The underlying
+// collection fetch remains persistently cached with its own revalidation window.
+export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();

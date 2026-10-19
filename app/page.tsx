@@ -12,7 +12,9 @@ import { Typewriter } from "@/components/Typewriter";
 import { Spotlight } from "@/components/Spotlight";
 import { WarmIdle } from "@/components/nav/Prefetch";
 
-export const revalidate = 14400;
+// IPO Guru's free plan permits one request per minute. Keep its collection fetch cached
+// in the data layer, but do not fan it out across static-build workers.
+export const revalidate = 0;
 export const metadata: Metadata = {
   title: { absolute: "Indian IPO GMP Today: Open & Upcoming IPOs, Dates and Status" },
   alternates: { canonical: "/" },

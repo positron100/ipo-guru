@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAllIpos, getIpo, getIpoDetail, getSource } from "@/lib/ipo-data";
+import { getIpo, getIpoDetail } from "@/lib/ipo-data";
 import { deriveIpo } from "@/lib/gmp";
-import { breadcrumbLd, ipoMetadata, isThin, STATUS_LABEL } from "@/lib/seo";
+import { breadcrumbLd, ipoMetadata, STATUS_LABEL } from "@/lib/seo";
 import { crore, dateOnly, dateTimeIST, rupee, signedRupee, times } from "@/lib/format";
 import { siteUrl } from "@/lib/site";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -19,20 +19,19 @@ import { GlassPanel } from "@/components/glass/GlassStatic";
 import { PctPill, gmpText } from "@/components/Gmp";
 import type { Ipo } from "@/lib/types";
 
-export const revalidate = 14400;
+// Details read the same cached collection at request time. Pre-rendering every
+// IPO would invoke the rate-limited upstream concurrently during builds.
+export const revalidate = 0;
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** Pages are built from the cached list, so prerendering every indexable IPO costs no extra upstream calls. */
+/**
+ * Build no provider-dependent pages. The free plan allows one request per minute,
+ * while static-generation workers do not share an in-flight request. Detail pages
+ * still render on demand from the collection fetch cached by the provider.
+ */
 export async function generateStaticParams() {
-  try {
-    // Providers that enrich each page with extra requests (IPO Watch scraper) render on demand instead of at build time.
-    if (getSource().enriched) return [];
-    const { ipos } = await getAllIpos();
-    return ipos.filter((i) => !isThin(i)).map((i) => ({ slug: i.slug }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
