@@ -26,6 +26,7 @@ export function ipoConfig() {
     /** IPO_DATA_PROVIDER: ipoguru (default) | ipowatch. */
     provider: (process.env.IPO_DATA_PROVIDER ?? "ipoguru").trim().toLowerCase(),
     /** How long fetched data is reused before it may be refreshed. Pages never call providers directly. */
+    ipoguruRevalidateSeconds: intEnv("IPOGURU_REVALIDATE_SECONDS", 10_800, 60),
     detailsRevalidateSeconds: intEnv("IPO_DETAILS_REVALIDATE_SECONDS", 86_400, 60),
     gmpRevalidateSeconds: intEnv("IPO_GMP_REVALIDATE_SECONDS", 14_400, 60),
     subscriptionRevalidateSeconds: intEnv("IPO_SUBSCRIPTION_REVALIDATE_SECONDS", 14_400, 60),

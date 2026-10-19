@@ -10,18 +10,20 @@ const withEnv = (env: Record<string, string | undefined>, fn: () => void) => {
 };
 
 test("defaults: IPO Guru provider, scraper off, intervals from defaults", () => {
-  withEnv({ IPO_DATA_PROVIDER: undefined, IPO_SCRAPER_ENABLED: undefined, IPO_GMP_REVALIDATE_SECONDS: undefined }, () => {
+  withEnv({ IPO_DATA_PROVIDER: undefined, IPO_SCRAPER_ENABLED: undefined, IPOGURU_REVALIDATE_SECONDS: undefined, IPO_GMP_REVALIDATE_SECONDS: undefined }, () => {
     const c = ipoConfig();
     assert.equal(c.provider, "ipoguru");
     assert.equal(c.scraper.enabled, false);
+    assert.equal(c.ipoguruRevalidateSeconds, 10_800);
     assert.equal(c.gmpRevalidateSeconds, 14400);
   });
 });
 
 test("intervals are configurable; invalid values fall back to the default", () => {
-  withEnv({ IPO_GMP_REVALIDATE_SECONDS: "900", IPO_DETAILS_REVALIDATE_SECONDS: "abc", IPO_SUBSCRIPTION_REVALIDATE_SECONDS: "5" }, () => {
+  withEnv({ IPOGURU_REVALIDATE_SECONDS: "900", IPO_GMP_REVALIDATE_SECONDS: "900", IPO_DETAILS_REVALIDATE_SECONDS: "abc", IPO_SUBSCRIPTION_REVALIDATE_SECONDS: "5" }, () => {
     const c = ipoConfig();
     assert.equal(c.gmpRevalidateSeconds, 900);
+    assert.equal(c.ipoguruRevalidateSeconds, 900);
     assert.equal(c.detailsRevalidateSeconds, 86400);
     assert.equal(c.subscriptionRevalidateSeconds, 14400, "below the minimum is rejected");
   });
