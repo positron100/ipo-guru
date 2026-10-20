@@ -16,6 +16,17 @@ export function istDateKey(now = new Date()): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
+/** Refreshes are scheduled at 00:30, 06:30, 12:30, and 18:30 IST. */
+export function istRefreshSlotKey(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", hour: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = Number(parts.find((item) => item.type === "hour")?.value);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new Error("Could not determine IST refresh slot");
+  const slot = String(Math.floor(hour / 6) * 6).padStart(2, "0");
+  return `${istDateKey(now)}:${slot}`;
+}
+
 export function asIpoListResult(value: unknown): IpoListResult | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<IpoListResult>;
@@ -24,18 +35,18 @@ export function asIpoListResult(value: unknown): IpoListResult | null {
   return candidate as IpoListResult;
 }
 
-/** Mark the daily attempt before calling upstream; only a valid response replaces last-good data. */
+/** Mark this six-hour attempt before calling upstream; only a valid response replaces last-good data. */
 export async function refreshIpoGuruSnapshot(
   cache: SnapshotCache,
   refresh: () => Promise<IpoListResult>,
   now = new Date(),
 ): Promise<{ status: "updated"; fetchedAt: string } | { status: "already-attempted" }> {
-  const attemptKey = `ipoguru:ipos:attempt:${istDateKey(now)}`;
+  const attemptKey = `ipoguru:ipos:attempt:${istRefreshSlotKey(now)}`;
   if (await cache.get(attemptKey)) return { status: "already-attempted" };
 
   // Best-effort cross-invocation idempotency. Runtime Cache does not offer atomic SET-NX;
-  // Vercel Cron is the sole caller, so normal page traffic cannot consume this quota.
-  await cache.set(attemptKey, { startedAt: now.toISOString() }, { ttl: ATTEMPT_TTL_SECONDS, name: "IPO Guru daily refresh guard" });
+  // Vercel Cron is the sole caller, so page traffic cannot consume this quota.
+  await cache.set(attemptKey, { startedAt: now.toISOString() }, { ttl: ATTEMPT_TTL_SECONDS, name: "IPO Guru refresh-window guard" });
   const fresh = asIpoListResult(await refresh());
   if (!fresh) throw new Error("IPO Guru refresh returned an empty or malformed IPO list");
 

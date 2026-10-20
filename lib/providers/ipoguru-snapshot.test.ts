@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { asIpoListResult, IPO_GURU_SNAPSHOT_KEY, istDateKey, refreshIpoGuruSnapshot } from "./ipoguru-snapshot.ts";
+import { asIpoListResult, IPO_GURU_SNAPSHOT_KEY, istDateKey, istRefreshSlotKey, refreshIpoGuruSnapshot } from "./ipoguru-snapshot.ts";
 
 class MemoryCache {
   values = new Map<string, unknown>();
@@ -15,14 +15,22 @@ test("IST day key follows midnight in India", () => {
   assert.equal(istDateKey(new Date("2026-10-19T18:30:00.000Z")), "2026-10-20");
 });
 
-test("daily refresh writes snapshot and skips duplicate attempts", async () => {
+test("four refresh windows are distinct and duplicate attempts within a window are skipped", async () => {
   const cache = new MemoryCache();
   let calls = 0;
   const refresh = async () => { calls++; return result; };
-  const now = new Date("2026-10-20T02:00:00.000Z");
-  assert.deepEqual(await refreshIpoGuruSnapshot(cache, refresh, now), { status: "updated", fetchedAt: result.fetchedAt });
-  assert.deepEqual(await refreshIpoGuruSnapshot(cache, refresh, now), { status: "already-attempted" });
-  assert.equal(calls, 1);
+  const slots = [
+    new Date("2026-10-19T19:30:00.000Z"), // 01:00 IST
+    new Date("2026-10-20T01:30:00.000Z"), // 07:00 IST
+    new Date("2026-10-20T07:30:00.000Z"), // 13:00 IST
+    new Date("2026-10-20T13:30:00.000Z"), // 19:00 IST
+  ];
+  assert.deepEqual(slots.map(istRefreshSlotKey), ["2026-10-20:00", "2026-10-20:06", "2026-10-20:12", "2026-10-20:18"]);
+  for (const now of slots) {
+    assert.deepEqual(await refreshIpoGuruSnapshot(cache, refresh, now), { status: "updated", fetchedAt: result.fetchedAt });
+    assert.deepEqual(await refreshIpoGuruSnapshot(cache, refresh, now), { status: "already-attempted" });
+  }
+  assert.equal(calls, 4);
   assert.deepEqual(cache.values.get(IPO_GURU_SNAPSHOT_KEY), result);
 });
 
@@ -34,6 +42,7 @@ test("failed refresh consumes the daily attempt but keeps last-good snapshot", a
   await assert.rejects(refreshIpoGuruSnapshot(cache, async () => { throw new Error("429"); }, now), /429/);
   assert.deepEqual(cache.values.get(IPO_GURU_SNAPSHOT_KEY), previous);
   assert.deepEqual(await refreshIpoGuruSnapshot(cache, async () => result, now), { status: "already-attempted" });
+  assert.deepEqual(await refreshIpoGuruSnapshot(cache, async () => result, new Date("2026-10-20T08:00:00.000Z")), { status: "updated", fetchedAt: result.fetchedAt });
 });
 
 test("malformed and empty snapshots are rejected", () => {
