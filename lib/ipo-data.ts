@@ -4,6 +4,7 @@ import { ipoConfig, scraperBlockReason } from "./config";
 import { IpoService } from "./ipo-service";
 import type { IpoList } from "./ipo-service";
 import { IpoGuruProvider } from "./providers/ipoguru-provider";
+import { IpoGuruCachedProvider } from "./providers/ipoguru-cache";
 import { IpoWatchHttpClient } from "./providers/ipowatch/client";
 import { IpoWatchProvider } from "./providers/ipowatch/provider";
 import { ProviderError } from "./providers/types";
@@ -14,7 +15,9 @@ import type { Ipo } from "./types";
 export function createProvider(env = ipoConfig()): IpoDataProvider {
   switch (env.provider) {
     case "ipoguru":
-      return new IpoGuruProvider();
+      // Production pages must never trigger API calls. The daily cron route is
+      // the only production code path that instantiates IpoGuruProvider directly.
+      return process.env.NODE_ENV === "production" ? new IpoGuruCachedProvider() : new IpoGuruProvider();
     case "ipowatch": {
       const blocked = scraperBlockReason(env, process.env.NODE_ENV);
       if (blocked) throw new ProviderError("config", blocked);

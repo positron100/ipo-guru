@@ -1,7 +1,6 @@
 # Handover: IPO GMP Desk (`ipo-gmp-tracker`)
 
-Last updated: 2026-10-08. Status: **feature-complete and QA'd locally; the mobile filter redesign (physical list motion, stage dropdown, expanding type pill) is committed and pushed to GitHub (`positron100/ipo-guru`, branch `main`, commit `f15053e`).
-The first Vercel deploy failed on the data source (see section 12); it still needs a data-source env var set (an IPO Guru key is now available, see section 4).**
+Last updated: 2026-10-20. Status: **production runtime errors now show IPO Guru returning HTTP 429 for both per-minute and daily quota. A local fix makes production pages read a last-good Runtime Cache snapshot and moves all API access to a protected once-daily Vercel Cron (one `/ipos` request/day in normal scheduled operation). The fix is not deployed. Set `CRON_SECRET` in Vercel Production before deploying; the cron rejects requests without it. Production recovery/live data remains unverified until the scheduled refresh succeeds.**
 
 ## 1. What this is
 An Indian IPO + GMP (grey market premium) tracking site. Server-rendered Next.js pages built from a pluggable data provider, with a glass UI,
@@ -9,8 +8,8 @@ a shared motion system, a mobile-first layout (phones are a designed layout, not
 Hard constraints from the owner: **free MVP** (no DB, no separate backend, no paid services), SEO is first-class, GMP is always labelled
 unofficial / not advice, missing values stay `null` (never shown as 0), do not copy IPO Watch's UI or content.
 
-**Operating decision (updated 2026-10-08):** the owner now **has an IPO Guru API key** (free plan). Local `.env.local` uses `IPO_DATA_PROVIDER=ipoguru` + `IPOGURU_API_KEY`, and a production build against the real v2 API succeeded (314 IPOs: the field mapping in `lib/ipoguru-normalize.ts` works on live data).
-The IPO Watch scraper remains available but is development / private use only. The code default is `ipoguru`, so any environment without a key (and without the scraper variables) fails to build.
+**Operating decision (updated 2026-10-20):** the owner has an IPO Guru API key (Free plan). Local `.env.local` uses `IPO_DATA_PROVIDER=ipoguru` + `IPOGURU_API_KEY`; the v2 mapping was previously verified against live data. Production page routes are cache-only; Vercel Cron is scheduled once daily at 19:00 UTC (00:30 IST, after the documented quota reset) and uses one `/ipos` request with embedded GMP. Failed/empty refreshes retain the previous snapshot; a per-IST-day marker suppresses duplicate attempts. Runtime Cache is regional, so `vercel.json` pins functions to `bom1`. No live API request was made during this change.
+The IPO Watch scraper remains available but is development / private use only. The code default is `ipoguru`. A missing/invalid API key now causes provider failure at request time; data routes do not fetch provider data during static build.
 
 ## 2. Stack
 Next.js **16.3** (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · **framer-motion** · `cheerio` (scraper parsing) · `server-only`.
@@ -43,11 +42,10 @@ Adding/replacing a provider = implement the interface and add a `case` in `creat
 - Base `https://www.ipoguru.in/api/v2`, header `X-API-KEY` from `IPOGURU_API_KEY` (server-only, never `NEXT_PUBLIC_`).
   Checked 2026-10-07: no header gives HTTP 401, an invalid key gives HTTP 403 `invalid_key`; an unset env var throws `IPOGURU_API_KEY is not set` before any request.
 - **Free plan: 10 requests/day, 1/minute, non-commercial / evaluation use only.** No GMP history, no category subscription, no registrar.
-- Only two calls: `GET /ipos?months=12` (cached 24 h by default) and `GET /gmp` (cached 4 h). `/gmp` overrides the GMP block embedded in `/ipos`.
-- `/gmp` is skipped when `/ipos` was just fetched from the network (its `Date` header < 61 s old) to respect 1 req/min; it is fetched on the next regeneration.
+- Production pages use `IpoGuruCachedProvider`, which reads `ipoguru:ipos:snapshot` from Vercel Runtime Cache and never falls through to the network. The sole production caller is `/api/cron/refresh-ipo`, scheduled once/day in `vercel.json`; it makes `GET /ipos?months=12` with `cache: no-store` then stores a non-empty response. The per-IST-day attempt marker is written before the request; failures retain the last-good snapshot and consume that day's attempt. Runtime Cache lacks atomic set-if-absent, and Vercel documents occasional duplicate cron delivery, so the marker is best-effort idempotency, not a mathematical distributed quota lock. Normal scheduled operation is one request/day, far below the 10/day limit.
 - No `/ipos/{slug}` calls at all. History is stubbed: see the comment at the bottom of `ipoguru-provider.ts`
   (`fetchGmp` → `/ipos/{slug}/gmp/history`, scope `gmp_history`, Standard plan ₹299/mo) and set `capabilities.gmpHistory = true`.
-- Verified against the real API on 2026-10-08 (one local `next build`: pages, sitemap and filters all work with 314 IPOs). Each build spends 1-2 of the 10 daily calls; `next start`/`dev` reuse the data cache.
+- Verified against the real API on 2026-10-08 (one local `next build`: pages, sitemap and filters all work with 314 IPOs). That historical implementation used more than one endpoint; current code uses only `/ipos` and its cache behavior is described above.
 
 ### IPO Watch scraper (opt-in) — `lib/providers/ipowatch/`
 **Development / private use only.** IPO Watch's Terms of Use forbid copying/republishing and limit use to personal, non-commercial.
@@ -76,7 +74,7 @@ Enabled only with `IPO_DATA_PROVIDER=ipowatch` **and** `IPO_SCRAPER_ENABLED=true
 `/` · `/ipo-gmp-today` (market board: lifecycle tabs, Mainboard/SME, sort, expandable rows) · `/upcoming-ipos` · `/ipo/[slug]` · `/contact` · `sitemap.xml` · `robots.txt` · 404 · error page.
 Per-IPO metadata, canonical (relative; `metadataBase` from `SITE_URL`), Open Graph/Twitter, JSON-LD (BreadcrumbList, WebPage, FAQPage from visible text; no `Event`).
 Thin pages (`isThin` in `lib/seo.ts`: fewer than 2 useful facts) get `noindex, follow` and are excluded from the sitemap.
-Pages revalidate every 14400 s (4 h). Footer attribution follows the active provider (`getSource()`); keep it (IPO Guru's terms require credit).
+Data-dependent routes render on demand (`revalidate = 0`) so Vercel does not cache degraded HTML pages. In production, IPO Guru pages read the daily cached snapshot and never call the API; when a refresh fails, last-good values remain available and are identified by their original fetched time. Footer attribution follows the active provider (`getSource()`); keep it (IPO Guru's terms require credit).
 The footer is hidden on `/contact` via a marker (`<div data-no-footer hidden />` plus one CSS rule), no JS.
 `SITE_URL` is the deployed origin used for canonical/sitemap/robots/JSON-LD; unset in production it falls back to localhost with a warning.
 
@@ -133,9 +131,11 @@ Tests: `lib/contact.test.ts`.
 | `SITE_URL` | `http://localhost:3000` | canonical/sitemap/OG base. **Set in production** (no domain is hardcoded) |
 | `IPO_DATA_PROVIDER` | `ipoguru` | `ipoguru` or `ipowatch` |
 | `IPOGURU_API_KEY` | none | required for IPO Guru; build fails without it |
+| `CRON_SECRET` | none | required in Vercel Production; protects `/api/cron/refresh-ipo` |
 | `IPOGURU_BASE_URL` | v2 URL | test override |
-| `IPO_DETAILS_REVALIDATE_SECONDS` | 86400 | `/ipos` calendar (Guru) / detail pages (Watch) |
-| `IPO_GMP_REVALIDATE_SECONDS` | 14400 | `/gmp` (Guru) / GMP + listing pages (Watch) |
+| `IPOGURU_REVALIDATE_SECONDS` | 10800 | local IPO Guru API cache window; production cron explicitly bypasses this cache |
+| `IPO_DETAILS_REVALIDATE_SECONDS` | 86400 | IPO Watch detail pages |
+| `IPO_GMP_REVALIDATE_SECONDS` | 14400 | IPO Watch GMP + listing pages (IPO Guru uses `IPOGURU_REVALIDATE_SECONDS`) |
 | `IPO_SUBSCRIPTION_REVALIDATE_SECONDS` | 14400 | subscription pages (Watch) |
 | `IPO_SCRAPER_ENABLED` | off | must be `true` to use IPO Watch |
 | `IPOWATCH_ALLOW_PRODUCTION` | off | second opt-in for production builds/servers |
@@ -152,21 +152,23 @@ npm test            # 51 node:test tests (pure modules; no network). On Node 22.
                     # node --experimental-strip-types --test lib/*.test.ts lib/providers/*.test.ts lib/providers/ipowatch/*.test.ts
 npm run typecheck   # needs generated Next types: run `npm run build` (or `npx next typegen`) once on a fresh clone / after deleting .next
 npm run lint
-npm run build       # needs a configured provider because pages fetch data at build time
+npm run build       # routes are dynamic; no IPO provider fetch is required during static generation
 npm run dev
 ```
 Tests import `.ts` extensions in pure modules (`allowImportingTsExtensions`); modules marked `server-only` (`client.ts`, `ipo-data.ts`, `ipoguru-provider.ts`) are not unit-tested.
 Avoid TypeScript parameter properties/enums in tested modules (Node strip-types doesn't support them).
 
-## 12. Deployment state and the Vercel failure
-GitHub: `https://github.com/positron100/ipo-guru` (`main`, no force pushes). The first Vercel build failed in `app/ipo-gmp-today/page.tsx` with an `UpstreamError` from `IPO Guru /ipos -> HTTP ...`:
-Vercel had no `IPO_DATA_PROVIDER`, so it used the default (IPO Guru) with no valid key. **Fix (the owner's choice, not yet applied):** add to Vercel (Production, and Preview if used)
-`IPO_DATA_PROVIDER=ipowatch`, `IPO_SCRAPER_ENABLED=true`, `IPOWATCH_ALLOW_PRODUCTION=true` and `SITE_URL=<deployed url>` (plus the three contact variables), then redeploy.
-Risks: IPO Watch may block Vercel's IPs (403 or a bot challenge gives a 30 minute pause, and the build fails by design; nothing is worked around), and running the scraper on a public site is outside the private-use limit
-of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a failed data fetch degrade a page instead of failing the whole build.
+## 12. Deployment state and production diagnosis
+GitHub: `https://github.com/positron100/ipo-guru`, branch `main`, no force pushes. Relevant commits: `c330a91` prevents build-time provider fan-out; `3e3ebc6` changes IPO Guru to one `/ipos` call every 3 hours and uses embedded GMP. Both are pushed.
+
+Vercel project: `mukul-negis-projects/ipo-guru`; production alias `https://ipo-guru-iota.vercel.app`. During the 2026-10-20 investigation, the active production deployment was an older `main` commit (`cff666f`), not the latest changes. Production runtime logs showed IPO Watch active and failing on the real listing page `https://ipowatch.in/ipo-subscription-status-today/` with HTTP 403. The error was not a `robots.txt` failure: the subscription request itself was denied. The other listing sources returned no usable content; their 404 status is inferred from client behavior (HTTP 404 becomes `null` and is not logged), not directly present in the captured logs. The app returned a degraded HTTP 200 page, and Vercel CDN served it as a cache hit (root age ~8071s, GMP page age ~1369s at inspection).
+
+Production environment variable names included `IPO_DATA_PROVIDER`, `IPO_SCRAPER_ENABLED`, and `IPOWATCH_ALLOW_PRODUCTION`; their values were not read. Production footer/runtime evidence indicated IPO Watch was active despite local `.env.local` selecting IPO Guru. No Vercel settings, secrets, caches, or deployment were changed during diagnosis.
+
+The repository change stops build-time provider calls and makes data routes dynamic; it does not change the production provider or fix IPO Watch's 403. To use the API in production, configure `IPO_DATA_PROVIDER=ipoguru` and `IPOGURU_API_KEY` in Vercel Production (server-side), set `SITE_URL`, then deploy the current `main` commit. Confirm the deployed commit and runtime provider before claiming live API data works. IPO Watch access controls and terms must not be bypassed.
 
 ## 13. Verified so far
-- typecheck, lint, 51 tests and a production build (scraper provider) after every phase; last full QA 2026-10-07.
+- 2026-10-20 after the API quota change: typecheck, lint, all 51 existing tests and production build passed. Build used `IPOGURU_BASE_URL=http://127.0.0.1:9`, so it made no live API calls. There is no automated test importing the server-only IPO Guru provider; its changed request pattern was reviewed in code and the build validated compilation/routing.
 - Browser checks: navigation timing, back/forward scroll restore, cold-route skeleton scroll, layout shift under 0.002, overflow at 8 phone/tablet widths, contrast, touch targets, opening-animation timing and origin
   (exact at every width and on desktop), contact fields (44 px, tap-anywhere focus, visible with a keyboard-sized viewport), and a desktop regression at 1440.
 - IPO Guru path: pages/sitemap/robots/metadata/JSON-LD against a mock of the v2 API, and (2026-10-08) one production build and local `next start` against the **real v2 API** with the owner's free key.
@@ -174,7 +176,7 @@ of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a f
 - Mobile pass (2026-10-07): 24 route x width combinations at 360/375/390/412/430/462 with touch emulation (no overflow, no clipped text, every tap target >= 44px counting the hit area), filter/sort sheets, menu, row expand, chart tap, CTAs; desktop geometry at 1440 diffed against the original code (identical apart from added wrappers). Mobile filter redesign (2026-10-08): at 360/375/390/412/430/462 no page overflow, Stage dropdown (all stages, labels and counts), Sort (all options), type pill expand/select/close, Stage+Type+Sort combos, reset; control heights all 42px; the type pill's right edge lines up with the order arrow above it; frosted menu confirmed by screenshot. Animation *timing* could not be measured (the headless browser runs frames far too slowly), so the open/close choreography was judged by final states only. Breathing UI audit: 1280/1440/1920, CLS about 0, no console errors, zero running infinite animations under reduced motion, financial numbers unchanged after the one-time count-ups settle.
 
 ## 14. Known limitations / not verified
-1. The free IPO Guru plan is non-commercial / evaluation only (10 requests/day, 1/minute); Vercel Hobby is also non-commercial. The live v2 shape is now verified once (2026-10-08).
+1. The IPO Guru Free plan has a 10 requests/day and 1 request/minute limit (verify current terms before public/commercial use). Production code now permits one scheduled API call/day under normal Cron delivery; Vercel occasionally may deliver a duplicate event, while Runtime Cache has no atomic lock. No live API request was made to validate this code change.
 2. **Scraper on public hosting:** a terms restriction and possible IP blocking (section 12). The first visit to a detail page takes seconds (3 serialized requests; 6–15 s when the site is down); pause/queue state is per server process.
 3. **Listed IPO history:** no persistence beyond Next's non-durable data cache. IPO Watch drops IPOs from its listing pages after listing, so their pages disappear under that provider.
 4. Slugs differ between providers; switching provider changes URLs, so a redirect map is needed before a real switch on a live site.
@@ -189,10 +191,10 @@ of IPO Watch's terms. A possible follow-up (needs the owner's approval): let a f
 13. Mobile filter: leaving-section DOM nodes linger invisibly (and non-interactive) for a couple of seconds after the exit animation; cause not found. The phone Stage/Type controls and the desktop controls are two DOM copies (one hidden by CSS), so queries by role must pick the visible one. `Select`'s menu is portalled and recomputes its position on scroll/resize; it was only exercised on phone widths and one desktop load.
 
 ## 15. Suggested next steps
-1. Set the data source on Vercel (section 12) and redeploy: the simplest path now is `IPOGURU_API_KEY` (server-only) with the default provider, no scraper variables. Never put the key in `.env.example` (a local edit once did; it must stay blank there) or any committed file.
-2. Decide commercial vs non-commercial; if commercial, get an IPO Guru key (Standard adds GMP history/subscription), confirm terms in writing, and verify `lib/ipoguru-normalize.ts` against one real build (each build spends 1–2 of the 10 daily calls).
-3. Implement `getGmpHistory` for Standard (see section 4) and re-enable the history UI by populating `ipo.history`.
-4. Set `SITE_URL` and the contact variables, and submit `sitemap.xml` to Search Console.
+1. In Vercel Production set `IPO_DATA_PROVIDER=ipoguru`, add `IPOGURU_API_KEY` and a random `CRON_SECRET` as server-side secrets, and verify `SITE_URL`. Deploy this change and confirm `/api/cron/refresh-ipo` succeeds before expecting production snapshot data. Do not put secrets in `.env.example` or committed files.
+2. Decide whether the site's use fits IPO Guru's Free plan evaluation terms and Vercel plan terms; upgrade/confirm terms before commercial use.
+3. Implement `getGmpHistory` for a plan with the required scope and re-enable history UI by populating `ipo.history`.
+4. Set contact variables and submit `sitemap.xml` to Search Console.
 5. Optional: persistence for listed-IPO history; a neutral rename of `ipoguru-normalize.ts`; a real-device mobile pass (iOS Safari especially: sheet scroll lock, safe areas, tap-to-inspect); real data-change number transitions once last-seen values can be stored.
 
 ## 16. Gotchas
